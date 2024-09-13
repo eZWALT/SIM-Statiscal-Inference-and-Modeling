@@ -1,0 +1,165 @@
+---
+title: "22-23-SIM-PARTIAL sol"
+author: "LÍdia Montero"
+date: "November, 3rd 2022"
+output: 
+  pdf_document: 
+    toc: true
+    toc_depth: 3
+    number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Boston Housing Data
+
+*Load Housing.RData file in your current R or RStudio session. Median value of owner-occupied homes in $1000's (medv) is going to be our numeric target and chas our target factor (chas has to be converted to factor). Use df dataset.*
+
+
+```{r,echo=FALSE}
+rm(list=ls())
+options(contrasts=c("contr.treatment","contr.treatment"))
+library(car)
+library(FactoMineR)
+library(missMDA)
+library(chemometrics)
+
+
+if(!is.null(dev.list())) dev.off()
+rm(list = ls())
+
+load("Housing.RData")
+options(contrasts=c("contr.treatment","contr.treatment"))
+summary(df)
+df$f.chas<-factor(df$chas,labels=c("Otherwise","River"))
+```
+
+**All qüestions account for 1 point (you have to answer 10 out of 15)**
+
+**1.	Some observations have an 'medv' value of 50.0. These data points contain missing or censored values. Since medv is a numeric target, which suitable actions are needed before starting a deeper analysis? Implement those actions in your dataset.**
+
+```{r}
+
+```
+
+
+**2. Determine thresholds for mild and severe outliers for the average number of rooms among homes in the neighborhood. Are there any outliers? Indicate observation id's and atypical numbers for average rooms.**
+
+
+```{r}
+
+```
+
+
+**3.	Replace by NA those outliers in RM variable detected in Point 2 and use an imputation procedure discussed in class to fill outlier data points. Assess the consistency of imputed value/s.**
+
+
+
+```{r}
+
+```
+
+**Remove from dataset those observations with NA in RM variable (room number) in Point 3. Calculate the correlation matrix for numerical variables rm, lstat, ptratio and medv and answer the following questions:**
+
+
+
+**4. Would you expect a neighborhood that has an 'LSTAT' value (percent of lower class workers) of 15 have home prices greater or less than a neighborhood having a 20 'LSTAT' value?**
+
+
+```{r}
+
+```
+
+
+
+**5. Analyse the profile of the numeric target (medv) using condes() method. A detailed explanation of procedure results is requested.**
+
+
+```{r}
+
+```
+
+
+**6. Analyse the profile of the binary target (chas) using a suitable method. A detailed explanation of procedure results is requested.**
+
+
+```{r}
+
+```
+
+
+**7.	Discuss whether a normal distribution would be a reasonable distribution for medv target.**
+
+
+
+```{r}
+
+```
+
+**8.	Is there variance homogeneity in the medv target groups defined by f.hcla clusters?**
+
+
+```{r}
+
+```
+
+
+**9.	Mean medv target can be considered to be the equal across groups defined by f.hcla cluster? Use a two.sided test at 99% confidence.**
+
+
+
+
+```{r}
+
+```
+
+**10.	State and test one.sided hypothesis to assess whether medv is greater for f.hclas 1 than for class 3 or the opposite at 99% confidence.**
+
+
+
+```{r}
+
+```
+
+**11.	The standard deviation of medv in f.hcla 1 should not exceed 10,000$. For the sample in f.hcla 1 in your dataset, calculate the standard deviation of medv assuming a normal distribution. Stating any assumptions, you need (write them), test at the 1% level the null hypothesis that the population standard deviation is not larger than 10,000$ against the alternative that it is.**
+
+
+
+```{r}
+
+```
+
+**12.	Figure out the 99% upper threshold for medv in f.hcla 1 population variance. Normal distribution for medv is assumed to hold.**
+
+
+
+```{r}
+
+```
+
+**13.	Build a 99% two-sided confidence interval for the difference in the mean of medv between f.hcla 1 and 3. Assume that equal variances in the population medv does not hold and normal distribution of medv (to simplify the calculations), but justify if these assumptions are critical.**
+
+
+
+
+```{r}
+
+
+```
+
+**14.	Determine a 99% confidence interval for the population proportion that favors Riverside in front of Otherwise. Test the null hypothesis that selecting Riverside and Otherwise zones has equal probability.**
+
+
+
+```{r}
+
+```
+
+**15.	A new survey considered 300 people, 110 prefer Riverside to Otherwise locations. Determine a 99% confidence interval for the difference in the population proportion that favors Riverside in front of other areas accounting the two sources. Test the null hypothesis that selecting Riverside zones has a greater probability in the survey.**
+
+
+```{r}
+
+```
+
+**Do not forget to knit your .Rmd file to .pdf (or to word and afterwards to pdf) before posting it on the ATENEA platform**

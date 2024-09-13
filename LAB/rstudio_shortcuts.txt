@@ -1,0 +1,13 @@
+clear console ---> CTRL + L
+exec sel. lines ---> CTRL + INTRO
+exec all ---> CTRL + ALT + R
+
+
+
+move cursor to file ---> ctrl + 1
+move cursor to console ---> ctrl + 2
+move cursor to plots ---> ctrl + 6
+move cursor to packags ---> ctrl + 7
+move cursor to envrioment ---> ctrl + 8
+
+knit (render) the file ---> ctrl + shift + k

@@ -1,0 +1,177 @@
+---
+title: "Introduction to R, RStudio"
+author: "Lecturers FIB-MDS-SIM"
+date: \today
+output:
+  word_document:
+    toc: no
+    toc_depth: '4'
+  html_document:
+    toc: no
+    toc_depth: '4'
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+geometry: left=1.9cm,right=1.9cm,top=1.25cm,bottom=1.52cm
+fontsize: 18pt
+subtitle: 'Laboratori 0 - Basic commands'
+classoption: a4paper
+editor_options: 
+  chunk_output_type: console
+---
+
+# Principal characteristics of R and its programming:
+- Open-source.
+
+- Highly Active Community. Functions and packages are personal creations from users. 
+
+- Oriented to objects. 
+
+- Extremely comprehensive. 
+
+- It does not need a compiler to run code. 
+
+- Direction to machine learning. 
+
+- Compatibility with other Data Processing Technologies (Example: Use a spark cluster to process large datasets using R)
+
+- R markdown to generate reports in any desired format.
+
+- Operations directly on vectors, not too much looping.
+
+- Data from APIs (and many other formats) can be easily pulled down.
+
+# Initial commands and basic descriptive statistics:
+
+How to citate R?
+
+```{r}
+citation()
+```
+
+Load package and data:
+
+```{r}
+# install.packages("car")
+library(car)
+data(Davis)
+attributes(Davis)
+str(Davis)
+# Numeric Univariant Description
+summary(Davis)
+# Rows and columns of data.frame Davis
+dim(Davis)
+```
+
+Graphical description:
+
+```{r}
+# Graphical Description of numeric data
+
+# Histograms:
+par(mfrow=c(2,2))
+hist(Davis$weight)
+hist(Davis$weight,10)
+hist(Davis$weight,10,col="blue")
+hist(Davis$weight,10,col=rainbow(10))
+
+# Histogram with proportions:
+par(mfrow=c(1,1))
+hist(Davis$weight,freq=F)  # Proportions
+
+# Dotplot:
+par(mfrow=c(2,1))
+stripchart(Davis$weight,method="stack")
+stripchart(Davis$weight,method="stack",xlab="weight",pch=19,col=3,main="Dotplot Weight in Davis dataset")
+
+# Boxplots (two ways):
+par(mfrow=c(2,3))
+boxplot(Davis$weight)
+boxplot(Davis$weight,col="blue",horizontal = TRUE)
+boxplot(Davis$weight,col="blue",horizontal = TRUE, pch=19,labels=Davis$weight)
+
+Boxplot(Davis$weight)
+Boxplot(Davis$weight,col="blue",main= "Weight in Davis dataset - row name Id")
+Boxplot(Davis$weight,col="blue",main=" Boxplot Weight - Weight Label for Outliers",labels=Davis$weight)
+
+#Barplots and pie charts:
+par(mfrow=c(2,2))
+barplot(table(Davis$sex))
+barplot(table(Davis$sex),col=rainbow(2))
+pie(table(Davis$sex))
+pie(table(Davis$sex),col=rainbow(2))
+
+```
+
+Description of variable factors:
+
+```{r}
+table(Davis$sex)
+margin.table(table(Davis$sex))
+prop.table(table(Davis$sex))
+```
+
+Ask for information, arguments and outputs of a function:
+
+```{r}
+# ?boxplot
+```
+
+Other functions:
+
+
+```{r}
+# View(Davis)
+head(Davis, n = 20) # n = 20 means  that the first 20 lines are printed in the R console
+
+attach(Davis)
+summary(weight)
+detach(Davis)
+# summary(weight) # Do not work
+
+with(Davis,tapply(height,sex,summary))
+summary(Davis$height)
+with(Davis,Boxplot(height~sex,pch=19,col=rainbow(2),main="Height vs Sex"))
+```
+
+R markdown offers the possibility to structure the document in different header levels:
+
+# Header 1
+
+## Header 2
+
+### Header 3
+
+and simple text included into pargraphs. 
+
+To enumerate:
+
+- Enumeration 1
+
+- Enumeration 2
+
+- ...
+
+It also allows the user to write in **bold** and in *italica*. 
+
+In addition, equations in $\LaTeX$ can be added when you are writing such as $2 \cdot x = 6$ and appart from text:
+
+$$2 \cdot x = 6$$
+More elements which can be included are: 
+
+- $\LaTeX$ tables
+
+- Images
+
+- Links
+
+- Bibliography
+
+- $\LaTeX$ matrices
+
+- ...
+
+More possibilities can be found visiting next reference:
+
+[10 R markdown possibilities](https://towardsdatascience.com/ten-awesome-r-markdown-tricks-56ef6d41098)

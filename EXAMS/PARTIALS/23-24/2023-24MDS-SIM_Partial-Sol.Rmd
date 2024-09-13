@@ -1,0 +1,255 @@
+---
+title: "23-24-SIM-Midterm Template"
+author: "Lídia Montero"
+date: "November, 3rd 2023"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+    number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+# Class attendance Data
+
+*Load attendraw.RData file in your current R or RStudio session. Selected numeric target is stndfnl (standardized final exam score) and let freshman status be the qualitative target. Prepare your dataset to represent factors in a suitable way.*
+
+
+```{r,echo=FALSE}
+options(contrasts=c("contr.treatment","contr.treatment"))
+library(car)
+library(FactoMineR)
+library(missMDA)
+library(chemometrics)
+library(mvoutlier)
+library(EnvStats)
+#tinytex::install_tinytex(force=TRUE)
+
+if(!is.null(dev.list())) dev.off()
+rm(list = ls())
+```
+
+# Load dataset and define factors
+
+```{r,echo=FALSE}
+load("attendraw.RData")
+options(contrasts=c("contr.treatment","contr.treatment"))
+summary(df)
+
+df$frosh<-factor(df$frosh,labels=c("Freshman-No","Freshman-Yes"))
+df$soph<-factor(df$soph,labels=c("Soph-No","Soph-Yes"))
+df$f.type<-factor((as.numeric(df$frosh)-1)+10*(as.numeric(df$soph)-1),levels=c(0,1,10),labels=c("none","freshman","sophomore"))
+
+```
+
+**All questions account for 1 point (you have to answer all of them)**
+
+**1.	Determine thresholds for mild and severe outliers in the target. Are there any outliers? Indicate observation id’s and atypical values. *Do not take any action*.**
+
+Target is stndfnl variable. Using summary we obtain Q1, Q3 and then IQR. Lower and upper bounds for mild and severe outliers are figured out. Two mild lower outliers are seen, but no severe outlier are found.
+
+```{r}
+varsumm <- summary( df$stndfnl ); varsumm
+iqr <- varsumm[5]-varsumm[2]; iqr
+lmout <- varsumm[2] - 1.5*iqr
+umout <- varsumm[5] + 1.5*iqr
+lsout <- varsumm[2] - 3*iqr
+usout <- varsumm[5] + 3*iqr
+
+lmout;umout
+lsout;usout
+
+llmild <- which( (df$stndfnl<lmout)|(df$stndfnl>umout) );llmild
+llsev <- which( (df$stndfnl<lsout)|(df$stndfnl>usout) );llsev
+```
+
+
+**2. Use an imputation method to address missing data in the dataset. Validate imputation results.**
+
+Missing data is found in hwrte variable. You can use either imputePCA() in missMDA package or mice method. Both methods return valid imputed values. Deciles are not affected, thus we would be allowed to retain imputed values.
+
+```{r}
+summary(df)
+
+llmiss <- which( is.na(df$hwrte) )
+df[ llmiss, ]
+
+library(missMDA)
+res.imppca <- imputePCA( df[,c(1:7,10:11)])
+summary(res.imppca$completeObs[,"hwrte"])
+
+library(mice)
+res.mice <- mice(df)
+dfimp <-complete(res.mice)
+summary(dfimp)
+
+quantile( df$hwrte, probs=seq(0,1,by=0.1), na.rm=T)
+quantile( dfimp$hwrte, probs=seq(0,1,by=0.1), na.rm=F)
+quantile( res.imppca$completeObs[,"hwrte"], probs=seq(0,1,by=0.1), na.rm=F)
+
+dfimp[ llmiss, ]
+
+df$hwrte <- dfimp$hwrte
+```
+
+
+**3. Are there multivariate outliers in the dataset? Indicate how many and which at 99% confidence. Explain what they seem to share in common. Do not take any action.**
+
+Library mvoutlier has to be upload in the workspace and method Moutlier executed using quantile parameter set at 0.99. A subset of the numeric variables has to be define to allow proper completion of the method. There are 19 multivariant outliers. Profiling of the binary factor indicating the status of multivariant outliers is addressed. Variables skipped, attend and atndrte are the most globally associated to multivariant outliers (results of $quanti.var list). In particular, multivariant outliers show a significant skipped and ACT mean over the overall mean and significant mean less than the overall mean for termgpa, hwrte, atndrte and attend.
+
+```{r}
+library(mvoutlier)
+names(df)
+res.mvout <- Moutlier(df[, c(2,3,4,5,6)], quantile = 0.99)
+plot(res.mvout$md, res.mvout$rd)
+abline(h=res.mvout$cutoff, col="red", lty = 2)
+abline(v=res.mvout$cutoff, col="red", lty = 2)
+
+llmout <- which( ( res.mvout$md > res.mvout$cutoff) & ( res.mvout$rd > res.mvout$cutoff));length(llmout)
+df$mvout <- 0
+df$mvout[ llmout ] <-1
+df$mvout <- factor( df$mvout, labels=c("Mvout-No","Mvout-Yes") )
+
+library(FactoMineR)
+res.cat <- catdes(df,13)
+res.cat$test.chi2
+res.cat$quanti.var
+res.cat$quanti
+
+tapply(df$stndfnl,df$mvout,summary)
+```
+
+
+**4. Analyze the profile of the numeric target (stndfnl) using a suitable profiling method. A detailed explanation of the procedure outcome is requested.**
+
+Condes method in FactoMineR package has to be applied. Perfect correlation is found for final (stndfn is just a linear transformation of final) and intense direct correlation is seen for termgpa, priGPA and ACT. A weak inverse correlation is found for skipped variable. 
+
+Freshman factor is globally related to the standard final mark (stndfnl). Freshman student (new students) stndfnl mark mean is less than the grand mean by 0.155 units.
+
+```{r}
+#library(FactoMineR)
+
+res.con <- condes(df, which(names(df)=="stndfnl"))
+res.con$quanti
+res.con$quali
+res.con$category
+```
+
+
+**5. Analyze the profile of the binary target (frosh) using a suitable method. A detailed explanation of the procedure outcome is requested.**
+
+Catdes method in FactoMineR package has to be applied. Frosh factor is globally related to soph factor according to $test.chi2 output list. Frosh factor is globally related to numeric variables priGPA, ACT, termgpa according to $quanti.var output list. Analyzing $category output list we see what it is obvious taking into account the definition of soph factor: a freshman (first year) can not be a sophomore student (second year). Accounting for $quanti output list, positive freshman observations show a significant lower mean on stndfnl, final, hwrte, termgpa, ACT and priGPA variables. Freshman students are attending to classes as the rest of students (attendance is not higher).
+
+```{r}
+res.cat <- catdes(df, which(names(df)=="frosh"))
+res.cat$quanti.var
+res.cat$quanti
+res.cat$test.chi2
+res.cat$category
+```
+
+
+**6. Is there variance homogeneity in the stndfnl target groups defined by frosh and soph classes, one by one and when applied simultaneously? Hint: You have to define a new factor.**
+
+Now you have to define a new factor that combines freshman and sophomore status in a polytomous factor. Students are in their first or second or neither first nor second year. A contingency table helps to undertand how to define the new factor. 
+
+Normal distribution of stndfnl target is rejected by Shapiro-Wilk test (or by graphic assessment using histogram and overlapping a normal curve). Non-parametric test for variance homogeneity has to be used.
+
+Null hypothesis of homogeneity of variances in group defined by frosh, or soph or polytomous f.type can not be rejected according to Fligner-Killeen tests.
+
+
+```{r}
+hist(df$stndfnl,20, col="cyan", freq=F)
+curve(dnorm(x),add=T, col="magenta")
+lines(density(df$stndfnl), col = "red", lwd=2, lty=2)
+shapiro.test( df$ stndfnl )
+
+fligner.test( df$stndfnl ~ df$frosh )
+fligner.test( df$stndfnl ~ df$soph )
+table(df$frosh, df$soph)  # You have to define f.type with 3 levels
+fligner.test( df$stndfnl ~ df$f.type )
+```
+
+
+**7.	Mean stndfnl target can be considered to be the equal across groups defined by frosh target? Use a two.sided test at 1% significance level and indicate the confidence interval for freshman target population mean. Indicate whether equal variances and normal distribution of stndfnl hypothesis hold in the population.**
+
+A non-parametric test for mean homogeneity of stdnfnl in groups defined frosh binary factor has to be used. Null hypothesis can not be rejected at any significance level. It is worth to note that the parametric t.test two sided hypothesis can not be rejected at 1% significance level, but it would be rejected at 5%. The same can be said of Wilcoxon test output, the best option in this case, given non normal distribution of the target. 99% two-sided confidence interval of stndfnl for fresman group lies between -0.317 to 0.058, it is obtained using t.test, the only possibility.  
+
+```{r}
+fligner.test( df$stndfnl ~ df$frosh )
+t.test( df$stndfnl ~ df$frosh, conf.level=0.99, mu=0, paired=F, equal.var=T)
+wilcox.test( df$stndfnl ~ df$frosh, conf.level=0.99, mu=0, paired=F, conf.int=T) # Non-parametric should be preferred
+
+llf <- which( df$frosh == "Freshman-Yes"); length( llf )
+stnfrmean <- mean(df$stndfnl[llf])
+t.test( df$stndfnl[llf] , mu=stnfrmean, conf.level=0.99)
+t.test( df$stndfnl[llf] , mu=0, conf.level=0.99) # Same result in terms of CI
+```
+
+**8.	State and test one.sided hypothesis to assess whether stndfnl is less for freshman than the rest at 1% significance level. Indicate and justify a 95% confidence interval for freshman target population mean.**
+
+Null hypothesis has to be stated as H0 mu_No = mu_Yes and H1: mu_No < mu_Yes, so alternative is set to "greater" according to the order of the levels in frosh factor. Using a parametric test H0 is rejected thus H1 is confirmed. In the non-parametric test H0 can not be rejected at the 1% significance level. A 95% CI for freshman stndfnl has a lower bound of -0.249 (and infinite upper bound) under t.test or -0.263 under the non-parametric Wilcoxon test. 
+
+You can figure out CI using formulas included in the theory slides.
+
+```{r}
+#t.test( df$stndfnl ~ df$frosh, conf.level=0.99, mu=0, paired=F, equal.var=T, alternative = "greater") # Not suitable
+wilcox.test( df$stndfnl ~ df$frosh, conf.level=0.99, mu=0, paired=F, equal.var=T, alternative = "greater",conf.int=T)
+
+llf <- which( df$frosh == "Freshman-Yes"); length( llf )
+stnfrmean <- mean(df$stndfnl[llf])
+wilcox.test( df$stndfnl[llf] , mu=0, conf.level=0.95, alternative="greater",equal.var=T,conf.int=T) # p value is not used only CI output.
+t.test( df$stndfnl[llf] , mu=0, conf.level=0.95, alternative="greater",equal.var=T)
+```
+
+
+**9.	The standard deviation of stndfnl in the freshman group should not exceed 1. For the sample in the freshman group in your dataset, calculate the deviation of stndfnl assuming that normal assumption holds. State and include any assumptions needed to test at the 1% significance level whether population standard deviation is larger than 1 in the freshman group. Figure out the 99% upper threshold for stndfnl in the freshman population standard deviation.**
+
+This question is about variance in the freshman group. We select the subset of observations belonging to the freshman group and state the null hypothesis of true variance equal 1 vs the alternative hypothesis of being greater than one at 1% significance level. P value indicates that H0 can not be rejected and lower bound to variance is 0.638, thus lower bound to standard deviation in freshman group should be 0.799. Using alternative hypothesis variance less than 1, H0 can not be rejected at 1% significance level and upper bound to standard deviation can be seen at 1.04.
+
+```{r}
+ll <- which(df$frosh=="Freshman-Yes")
+var(df$stndfnl[ll])
+var(df$stndfnl[-ll])
+
+sd(df$stndfnl[ll])
+sd(df$stndfnl[-ll])
+
+#varTest(df$stndfnl[ll], sigma.squared=1,alternative="less",conf.level = 0.99)
+varTest(df$stndfnl[ll], sigma.squared=1,alternative="greater",conf.level = 0.99)
+
+sqrt(0.6381429) # LCL refers to variance
+#sqrt(1.080993)
+```
+
+
+**10.	Determine a 99% confidence interval for the population proportion of neither freshman, nor sophomore. Test the null hypothesis that selecting a unit neither freshman, nor sophomore has a population probability greater than 0.25.**
+
+We have the group not freshmand and not sophomore. Thus the test has to be done based on the proportion for this group (None level in f.type definition). The population proportion of None students is clearly less than 25%, according to the one-sided less test.
+
+```{r}
+prop.table(table(df$f.type))
+ll <- which( df$f.type =="none"); length( ll )
+prop.test(x=130, n=680, conf.level=0.99, correct=F)
+
+prop.test(x=130, n=680, p=0.25,conf.level=0.99, correct=F, alternative ="greater")
+prop.test(x=130, n=680, p=0.25,conf.level=0.99, correct=F, alternative ="less")  # In fact is less than 0.25
+```
+
+
+**11.	Test the null hypothesis that the proportion of freshman group and the population proportion of neither freshman, nor sophomore is the same at 1% significance level.**
+
+This is a two.sided test of equal proportions in the two populations (freshman and none) at 1% significance level. The null hypothesis of identical proportions can not be rejected at 1% significance level.
+
+```{r}
+prop.table(table(df$f.type))
+table(df$f.type)
+prop.test(x=c(130, 158), n=c(680, 680), conf.level=0.99, correct=F)
+```
+
+**Do not forget to knit your .Rmd file to .pdf (or to word and afterwards to pdf) before posting it on the ATENEA platform task (only for pdf). Markdown should be also posted in the corresponding task.**

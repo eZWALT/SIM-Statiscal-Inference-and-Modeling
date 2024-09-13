@@ -1,0 +1,116 @@
+---
+title: "23-24-SIM-Midterm Template"
+author: "Lídia Montero"
+date: "November, 3rd 2023"
+output: 
+  pdf_document: 
+    toc: true
+    toc_depth: 3
+    number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Class attendance Data
+
+*Load attendraw.RData file in your current R or RStudio session. Selected numeric target is stndfnl (standardized final exam score) and let freshman status be the qualitative target. Prepare your dataset to represent factors in a suitable way.*
+
+
+```{r,echo=FALSE}
+options(contrasts=c("contr.treatment","contr.treatment"))
+if(!is.null(dev.list())) dev.off()
+rm(list = ls())
+
+```
+
+**All questions account for 1 point (you have to answer all of them)**
+
+**1.	Determine thresholds for mild and severe outliers for the target. Are there any outliers? Indicate observation id’s and atypical values. *Do not take any action*.**
+
+```{r}
+
+```
+
+
+**2. Use an imputation method to address missing data in the dataset. Validate imputation results.**
+
+
+```{r}
+
+```
+
+
+**3. Are there any multivariate outliers in the dataset? Indicate how many and which at 99% confidence. Explain what they seem to share in common. Do not take any action.**
+
+
+
+```{r}
+
+```
+
+
+**4. Analyze the profile of the numeric target (stndfnl) using a suitable profiling method. A detailed explanation of the procedure outcome is requested.**
+
+
+```{r}
+
+```
+
+
+
+**5. Analyze the profile of the binary target (frosh) using a suitable method. A detailed explanation of the procedure outcome is requested.**
+
+
+```{r}
+
+```
+
+
+**6. Is there variance homogeneity in the stndfnl target groups defined by frosh and soph classes, one by one and when applied simultaneously? Hint: You have to define a new factor.**
+
+
+```{r}
+
+```
+
+
+**7.	Mean stndfnl target can be considered to be the equal across groups defined by frosh target? Use a two.sided test at 1% significance level and indicate the confidence interval for freshman target population mean. Indicate whether equal variances and normal distribution of stndfnl hypothesis hold in the population.**
+
+
+
+```{r}
+
+```
+
+**8.	State and test one.sided hypothesis to assess whether stndfnl is less for freshman than the rest at 1% significance level. Indicate and justify a 95% confidence interval for freshman target population mean.**
+
+
+```{r}
+
+```
+
+
+**9.	The standard deviation of stndfnl in the freshman group should not exceed 1. For the sample in the freshman group in your dataset, calculate the deviation of stndfnl assuming that normal assumption holds. State and include any assumptions needed to test at the 1% significance level whether population standard deviation is larger than 1 in the freshman group. Figure out the 99% upper threshold for stndfnl in the freshman population standard deviation.**
+
+
+```{r}
+
+```
+
+
+**10.	Determine a 99% confidence interval for the population proportion of neither freshman, nor sophomore. Test the null hypothesis that selecting a unit neither freshman, nor sophomore has a population probability greater than 0.25.**
+
+
+```{r}
+
+```
+
+**11.	Test the null hypothesis that the proportion of freshman group and the population proportion of neither freshman, nor sophomore is the same at 1% significance level.**
+
+
+```{r}
+
+```
+
+
+**Do not forget to knit your .Rmd file to .pdf (or to word and afterwards to pdf) before posting it on the ATENEA platform task (only for pdf). Markdown should be also posted in the corresponding task.**

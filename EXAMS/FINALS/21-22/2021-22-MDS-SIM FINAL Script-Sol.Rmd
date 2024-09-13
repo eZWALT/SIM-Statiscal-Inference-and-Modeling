@@ -1,0 +1,520 @@
+---
+title: "2021-22 MDS-SIM-FINAL"
+author: "Lídia M."
+date: "14/12/2021"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    warning = FALSE,
+    error = FALSE,
+    fig.width = 5,  # generated images
+    fig.height = 4,  # generated images
+    fig.pos = "H",  # pdf mode
+    fig.align = "center"
+)
+```
+
+# Data Description
+
+A study of political ideology and the relationship to sociocultural characterization of U.S. individuals based on an a survey from 944 observations in 10 variables from the 1996 General Social Survey is addressed. Data help quantify well-known relationships between income, age, education, and political affiliation. FPID political affiliation, response variable, is coded into three categories: Democrat, Independent, and Republican. The explanatory variables considered throughout the exercise are: income (factor and covariant), age and education (factor).
+
+## Variable and Definitions
+  -   popul 	population of respondent's location in 1000s of people. 
+  -   TVnews 	days in the past week spent watching news on TV. 
+  -   selfLR 	Left-Right self-placement of respondent: an ordered factor with levels extremely liberal, extLib < liberal, Lib < slightly liberal, sliLib < moderate, Mod < slightly conservative, sliCon < conservative, Con < extremely conservative, extCon. 
+  -   ClinLR 	Left-Right placement of Bill Clinton (same scale as selfLR): an ordered factor with levels extLib < Lib < sliLib < Mod < sliCon < Con < extCon.
+  -   DoleLR 	Left-Right placement of Bob Dole (same scale as selfLR): an ordered factor with levels extLib < Lib < sliLib < Mod < sliCon < Con < extCon.
+  -   PID 	Party identification: an ordered factor with levels strong Democrat, strDem < weak Democrat, weakDem < independent Democrat, indDem < independent independentindind < indepedent Republican, indRep < waek Republican, weakRep < strong Republican, strRep. 
+  -   age 	Respondent's age in years 
+  -   educ 	Respondent's education: an ordered factor with levels 8 years or less, MS < high school dropout, HSdrop < high school diploma or GED, HS < some College, Coll < Community or junior College degree, CCdeg < BA degree, BAdeg < postgraduate degree, MAdeg. 
+  -   income 	Respondent's family income: an ordered factor with levels $3Kminus < $3K-$5K < $5K-$7K < $7K-$9K < $9K-$10K < $10K-$11K < $11K-$12K < $12K-$13K < $13K-$14K < $14K-$15K < $15K-$17K < $17K-$20K < $20K-$22K < $22K-$25K < $25K-$30K < $30K-$35K < $35K-$40K < $40K-$45K < $45K-$50K < $50K-$60K < $60K-$75K < $75K-$90K < $90K-$105K < $105Kplus. 
+  -   vote 	Expected vote in 1996 presidential election: a factor with levels Clinton and Dole. 
+  -   nincome 	Salary as a covariant (mid point chosen for each interval).
+  -   FPID	Political: Democratic, Independent i Republican – Target – New variable defined for this exam.
+
+**Source**
+
+Sapiro, Virginia, Steven J. Rosenstone, Donald R. Kinder, Warren E. Miller, and the National Election Studies. AMERICAN NATIONAL ELECTION STUDIES, 1992-1997: COMBINED FILE [Computer file]. 2nd ICPSR version. Ann Arbor, MI: University of Michigan, Center for Political Studies [producer], 1999. Ann Arbor, MI: Inter-university Consortium for Political and Social Research [distributor], 1999.
+
+**References**
+
+Found at http://www.stat.washington.edu/
+
+**Data Preparation and library loading**
+
+```{r echo=FALSE}
+options(contrasts=c("contr.treatment","contr.treatment"))
+library(faraway)
+library(nnet)
+library(MASS)
+library(car)
+library(effects)
+library(lmtest)
+library(FactoMineR)
+library(DescTools)
+library(ResourceSelection)
+library(statmod)
+library(ROCR)
+library(cvAUC)
+
+# Clear plots
+if(!is.null(dev.list())) dev.off()
+# Clean workspace
+rm(list=ls())
+
+data(nes96)
+dim(nes96)
+summary(nes96)
+head(nes96)
+names(nes96)
+
+nes96$FPID<-nes96$PID
+levels(nes96$FPID)<-c("Democratic","Democratic","Independent","Independent","Independent","Republican","Republican")
+
+table(nes96$income)
+nes96$nincome<-nes96$income
+levels(nes96$nincome)<-c("1.5","4","6","8","9.5","10.5","11.5","12.5","13.5","14.5","16","18.5","21","23.5","27.5","32.5","37.5","42.5","47.5","55","67.5","82.5","97.5","115")
+nes96$nincome<-as.numeric(levels(nes96$nincome))[nes96$nincome]
+summary(nes96)
+```
+
+**The first attempt is a nominal multinomial treatment for FPID target. Answer the questions accurately based on the contents presented in the course and the indicated results of specific models.**
+
+# Point 1
+
+**Determine if the gross effect of the income covariate is statistically significant. Determine if the gross effect of the income covariate is linear on the logodds scale.**
+
+*Residual deviance for fit.1 model is 1985.424 and 2041.272 for the null model. Deviance difference is 55.85 units assymptotically distributed as Chisq(2), thus H0 stated as 'Both models are equivalent' has a pvalue = 1-pchisq(55.85,2)=7.452927e-13 << 0.05, and H0 can be rejected. Gross effect for income covariate is significant (at any level). A quadratic term of nincome is not needed as seen in the Anova(fit.11) output, it does not add any additional benefit to explain FPID target.*
+
+```{r}
+fit.0 <- multinom(FPID ~ 1, data=nes96)
+fit.1 <- multinom(FPID~ I(nincome-37.5), data=nes96)
+
+anova(fit.0,fit.1)
+Anova(fit.1,test="LR")
+
+fit.11 <- multinom(FPID~ I(nincome-37.5)+I((nincome-37.5)^2), data=nes96)
+Anova(fit.11,test="LR")
+anova(fit.1,fit.11)
+```
+
+# Point 2
+
+**Determine if the gross effect of the income factor is significant at the 0.05 significance level.**
+
+*Residual deviance for fit.2 model (in the addendum) is 1932.417 and 2041.272 for the null model. Deviance difference is 108.86 units assymptotically distributed as Chisq(2*(24-1)=46), thus H0 stated as 'Both models are equivalent' has a pvalue = 1-pchisq(108.86,46)=5.196456e-07 << 0.05, and H0 can be rejected. Gross effect for income factor is significant (at any level).*
+
+```{r}
+fit.2 <- multinom(FPID~ income,data=nes96)
+summary(fit.2)
+anova(fit.0,fit.2,test="Chisq")
+```
+
+
+# Point 3
+
+**Calculate McFadden pseudo coefficient of determination for the model that facilitates the best treatment for the gross income/nincome effect.**
+
+*AIC(fit.2)=2028.417 and AIC(fit.1)=1993.424, so a numeric treatment including the linear term of nincome covariate gives the best results. According to lecture notes McFadden Pseudo R2 turns out to be 1 - (fit.1$deviance / fit.0$deviance) = 1-(1985.424/2041.272) = 0.027, thus 2.7% a very low value. There is still plenty of work to be done.*
+
+```{r}
+AIC(fit.0,fit.1,fit.11,fit.2)
+# Sheather/McFadden
+1 - (fit.1$deviance / fit.0$deviance)
+1 - (fit.2$deviance / fit.0$deviance)
+```
+
+# Point 4
+
+**Once the income is in the model, as a covariant, determine if the net effect of age is statistically significant? Once income and age are in the model, determine if the net effect of education is statistically significant?**
+
+*According to the provided output, stepwise reduction monitorazed by AIC is given for fit.6 where main effect  for educ and interactions to age (linear and quadratic terms) and income are removed, while keeping quadratic term of age that can not retained without the linear term*. **(I have not rejected answers indicating this model as the best model since AIC is 1992.88, nevertheless is not convenient)**.
+
+*Results for  anova(fit.1,fit.5,test="Chisq") test shows the equivalence between numeric and linear income model and the one containing linear and quadratic terms of age (pvalue = 0.23), thus neither age, nor educ are worth to be included.*
+
+```{r}
+fit.4 <- multinom(FPID~ I(nincome-37.5)+I(age-44), data=nes96)
+fit.5 <- multinom(FPID~ I(nincome-37.5)+I(age-44)+I((age-44)^2), data=nes96)
+fit.5p <- multinom(FPID~ I(nincome-37.5)+poly(age,2), data=nes96)
+anova(fit.4,fit.5,test="Chisq")
+anova(fit.1,fit.4,test="Chisq")
+
+fit.6p <- multinom(FPID~ (I(nincome-37.5)+poly(age,2))+educ, data=nes96)
+fit.61 <- multinom(FPID~ (I(nincome-37.5)+poly(age,2))*educ, data=nes96)
+fit.6 <- multinom(FPID~ (I(nincome-37.5)+I(age-44)+I((age-44)^2))*educ, data=nes96)
+
+anova(fit.6p,fit.61,test="Chisq")
+anova(fit.5,fit.6,test="Chisq")
+fit.62<-step(fit.6)
+```
+
+# Point 5
+
+**Determine which of the available proposals is most successful. Determine if the model chosen in the previous point fits well with the data.**
+
+*The best model obtained so far is the one including the linear term of nincome. Residual deviance is 1985.24 and leaves 2n-p=1888-4 degrees of freedom. Goodness of test fit for the null hypothesis H0 model fits well data has a pvalue of 0.05 (1-pchisq(1985.24, 1888-4)=0.05). Thus H0 is border line to be rejected at 0.05 significance level. Since individual data is provided you can assess goodness of fit by comparing deviance against degrees of freedom and you might conclude that the model is not so bad. If you have considered n-p as degrees of freedom, then H0 is rejected, but both solutions are correct.*
+
+```{r}
+anova(fit.1,fit.6,test="Chisq")
+fit.7 <- step(fit.61)
+AIC(fit.1, fit.11, fit.2, fit.4, fit.5, fit.6, fit.7, fit.62)
+
+fit.1$deviance;fit.1$edf;2*nrow(nes96)-fit.1$edf
+1-pchisq(fit.1$deviance, 2*nrow(nes96)-fit.1$edf)
+```
+
+# Point 6
+
+**Interpret the effect of income on logodds and odds scales in the best model available so far.**
+
+*Best model is fit.1 including linear term of nincome covariate. Interpretation in the logodd scale indicates that each 1000$, one unit increment for nincome around the mean, increases logodds of Independent over Democratic and Republican over Democratic by 0.016 and 0.018 units respectively.*
+
+*Odds of Independent over Democratic and Republican over Democratic are increased by 1.62% and 1.78%, respectively, for each unit of increment of nincome (1000$) around the mean.*
+
+```{r}
+summary(fit.1)
+coef(fit.1)[,2]
+exp(coef(fit.1)[,2])
+100*(exp(coef(fit.1)[,2])-1)
+```
+
+# Point 7
+
+**Calculate estimates for the model parameters in the null multinomial model.**
+
+*According to the provided output, sample probabilities for Democratic, Independent and Republican are 0.4025424, 0.2531780 and 0.3442797.*
+
+*Odds for Independent and Republican over Democratic are 0.629 and 0.855 and logodds are -0.464 and -0.156. Output from R confirms these values.*
+
+```{r}
+table(nes96$FPID)
+prob<-prop.table(table(nes96$FPID));prob
+oddprob <- prob[2:3]/prob[1];oddprob
+lodd <- log(oddprob); lodd
+summary(fit.0)
+```
+
+# Point 8
+
+**Calculate the predicted probabilities for the 3 ideologies in 40-year-old women with no education and median income using the best model available so far.**
+
+*Median nincome is 37.5 so taken the intercept terms is enough to determine the predicted values in the linear predictor scales (logodds Independent or Republican over Democratic) being -0.5716824 and -0.2879428, respectively. Democratic probability has be calculated first as 1/(1+exp(-0.5716824)+exp(-0.2879428))=0.432. Then, Independent probability is Democratic probability by Independent over Democratic odds 0.432x0.565=0.244, and Republican probability is Democratic probability by Republican over Democratic odds 0.432x0.7498045=0.324. Adding up those 3 probabilities 0.432+0.244+0.324 gives 1, as it has to be.*
+
+```{r}
+coef(fit.1)
+predict(fit.1, newdata=data.frame(nincome=37.5),type="probs")
+predict(fit.62, newdata=data.frame(nincome=37.5, age=40),type="probs") # For students using fit.62 as the best model
+
+logodd <- coef(fit.1)[,1];logodd
+odd<-exp(logodd);odd
+pdem <- 1/(1+sum(odd));pdem
+pind <- pdem * odd[1];pind
+prep <- pdem * odd[2];prep
+pdem+pind+prep
+```
+
+# Point 9
+
+**Evaluate the predictive power of the model with the chosen nominal response and the improvement over the null model.**
+
+*This question can be addressed using confusion tables available in the given output. For fit.1 model 284+0+159 observations out of 944 (46.93%) are well-predicted and for fit.0 null model 380 out of 944 (40.25%) are well-predicted. Thus, almost a 6% increment in the predictive power is obtained with respect to the null model.*
+
+```{r}
+pmprob1 <- predict(fit.1,type="class")
+pmprob0 <- predict(fit.0,type="class")
+table(pmprob1,nes96$FPID);table(pmprob0,nes96$FPID)
+tt<-table(pmprob1,nes96$FPID);tt
+tt0<-table(pmprob0,nes96$FPID);tt0
+100*sum(diag(tt))/sum(tt)
+100*sum(diag(tt0))/sum(tt0)
+```
+
+**The second attempt is based on hierarchical logit modelling. A first level defines a binary logit model with a positive response from Other (non-Democratic) and a second level where non-Democratic units are discriminated between Republican (positive response) and Independent. Answer the questions accurately based on the content presented in the course and the indicated results for specific models.**
+
+# Point 10
+
+**Determine whether the gross effect of income is statistically significant? Which would be the best treatment for income in HL1/HL2?**
+
+*Results can be seen for the first hierarchical level (HL1) using Other as positive outcome and Democratic as negative outcome. Results for mb1.0, mb1.1, mb1.11 and mb1.2 are available (including residual deviance and their degrees of freedom and AIC statistics). Deviance tests can be addressed:*
+
+  -   *Once the linear term of nincome is included in the model, adding the quadratic term is not useful, since H0 'Both models are equivalent' has a pvalue is greater than 0.05 (1271.1-1216.8=0.226) according to their asymptotic distribution Chisq(1): 1-pchisq(0.226,1)=0.635. H0 can not be rejected.*
+  
+  -   *When the linear term of nincome is included in the model, its gross effect  is  useful, since H0 'Both models are equivalent, null model and mb1.1' has a pvalue is less than 0.05 (1272.6-1217.1=55.491) according to their asymptotic distribution Chisq(1): 1-pchisq(55.491,1)=9.4e-14. H0 can be rejected. Thus nincome linear gross-effect is significant.*
+  
+  - *Output for mb1.2 including income factor gross-effect is available. The best model between mb1.1 and mb1.2 (not nested) can be addressed by selecting the model with the lowest AIC mm1.1 (AIC(mb1.1)=1221.1 < AIC(mb1.2)=1248.8).*
+  
+  - *Output for HL2 is also included. Covariate income is not significant, neither linear, no quadratic terms. Nevertheless age covariate (linear and quadratic terms), main effect of educ and some interaction to age provides the best AIC, minimum AIC(after step(mb2.3)=769.9. Using income as a factor output is not available.*
+
+
+```{r}
+nes96$BPID<-nes96$FPID
+levels(nes96$BPID)<-c("Democratic","Other","Other")
+summary(nes96)
+
+mb1.0<- glm( BPID~ 1, family=binomial(link="logit") ,data=nes96)
+mb1.1<- glm( BPID~ I(nincome-37.5), family=binomial(link="logit") ,data=nes96)
+mb1.11<- glm( BPID~ I(nincome-37.5)+I((nincome-37.5)^2), family=binomial(link="logit") ,data=nes96)
+mb1.2<- glm( BPID~ income, family=binomial(link="logit") ,data=nes96)
+anova(mb1.0,mb1.1,test="Chisq")
+anova(mb1.0,mb1.2,test="Chisq")
+anova(mb1.1,mb1.11,test="Chisq")
+AIC(mb1.0,mb1.1,mb1.11,mb1.2)
+summary(mb1.2)
+summary(mb1.11)
+
+mb2.3<-glm(formula = FPID ~ (I(nincome - 37.5)+I((nincome - 37.5)^2)+I(age - 37.5)+I((age - 37.5)^2))*educ, family = binomial(link = "logit"), data = nes96[nes96$FPID != 
+        "Democratic", ])
+step(mb2.3)
+```
+
+# Point 11
+
+**Calculate a 95% confidence interval for the effect of the median range income level factor on the "Democratic" political affiliation odds. Use the mb1.2 model and interpret median range  income level in log-odds, odds and probability scales.**
+
+*Median range income in the model using income factor corresponds to adding dummy estimate for income$35K-$40K being 1.09861 and having an standard error of 0.55662, in the logodds scale can be determined as an increment from the reference group with a 95% confidence interval for median income that ranges from 0.007637089 to 2.19.*
+
+*Odds for Other (Independent or Republican) over Democratic are multiplied with 95% CI by 1.008 to 8.93 with respect to the reference group (lowest income). Probability of Other is 0.2531780 +  0.3442797 = 0.5974577.*
+
+*Approximately interpretation increment in the Other probability scale ranges with a 95% CI between  0.007637089x0.5974577x(1-0.5974577)=0.00118 to 2.189587x0.5974577x(1-0.5974577)=0.527 compared to the reference income group (the lowest income).*
+
+*Instead of interpreting the medium range effect on Other, it is requested for Democratic (the reference level). The logit model taking as positive outcome Democratic would have estimated parameters for dummy variables with reversal sign. So, logodds of Democratic in the medium income range are reduced by 1.099 with respect to the lowest income reference group and odds of Democratic to Other are multiplied by 1/3 or reduced by 66.67% compared to the reference group. And Democratic probability would be approximately reduced by -1.098612x0.5974577x(1-0.5974577)=-0.264 units.*
+
+```{r}
+ppother <- prop.table(table(nes96$BPID))[2];ppother
+coef(mb1.2)[17]
+exp(coef(mb1.2)[17])
+coef(mb1.2)[17]*ppother*(1-ppother)
+lsup<-coef(mb1.2)[17]+1.96*0.55662;lsup
+linf<-coef(mb1.2)[17]-1.96*0.55662;linf
+exp(c(linf,lsup))
+100*(exp(c(linf,lsup))-1)
+
+table(nes96$BPID)
+nes96$BPID <- factor(nes96$BPID, levels = c("Other","Democratic"))
+mb1.2i<- glm( BPID~ income, family=binomial(link="logit") ,data=nes96)
+summary(mb1.2i)
+coef(mb1.2i)[17]
+exp(coef(mb1.2i)[17])
+coef(mb1.2i)[17]*ppother*(1-ppother)
+lsup<-coef(mb1.2i)[17]+1.96*0.55662;lsup
+linf<-coef(mb1.2i)[17]-1.96*0.55662;linf
+nes96$BPID <- factor(nes96$BPID, levels = c("Democratic","Other"))
+```
+
+# Point 12
+
+**Interpret the effect of the covariate income on the odds scale. Use the mb1.1 and mb2.1 models. Assess whether the proposed mb1.1 and mb2.1 models fit well with data.**
+
+*(HL1). Each unit increment on numeric income represents an increased of 1.7% in the odds scale of Other to Democratic.*
+
+*(HL2). Each unit increment on numeric income represents an increased of 0.16% in the odds scale of Republican to Independent conditional to Other. Numeric income is not significant.*
+
+*Residual deviance and degrees of freedom are given for mb1.1 and mb2.1 models in the output. Goodness of fit test for HL1 does not fulfill asymptotic chi-squared distribution, but deviance(mb1.1)= 1217.1 > df(mb1.1)=942, so missfit is present. Goodness of fit test for HL2 does not fulfill asymptotic chi-squared distribution, but deviance(mb2.1)= 768.3 > df(mb2.1)=562, so missfit is also present.*
+
+*Hosmer-Lemeshow test is shown for mb1.1 and m2.1 in both cases pvalue << 0.05 indicating that missfit is present in the provided output. Nevertheless, specification of the parameters requires a numeric target, 0 or 1, and once hltest is properly specified pvalues >> 0.05 and thus, goodness of fits hold for HL1 and HL2.*
+
+```{r}
+mb2.1<-glm(formula = FPID ~ I(nincome - 37.5), 
+    family = binomial(link = "logit"), data = nes96[nes96$FPID != 
+        "Democratic", ])
+coef(mb1.1)
+exp(coef(mb1.1))
+prop.table(table(nes96$BPID))
+coef(mb1.1)*0.5974576*(1-0.5974576)
+coef(mb2.1)
+exp(coef(mb2.1))
+prop.table(table(nes96$FPID[nes96$BPID!="Democratic"]))
+prop.table(table(nes96$FPID[nes96$BPID!="Democratic"]))*0.5974576
+coef(mb2.1)*0.5762411*(1-0.5762411) # Conditional to not being Democratic
+
+mb1.1$deviance;mb1.1$df.residual
+1-pchisq(mb1.1$deviance,mb1.1$df.residual)
+mb2.1$deviance;mb2.1$df.residual
+1-pchisq(mb2.1$deviance,mb2.1$df.residual)
+library(ResourceSelection)
+res.hltest1<-hoslem.test(nes96$BPID, fitted(mb1.1));res.hltest1
+res.hltest2<-hoslem.test(nes96$FPID[nes96$FPID != 
+        "Democratic"], fitted(mb2.1));res.hltest2
+# Call using correct arguments
+res.hltest1<-hoslem.test(as.numeric(nes96$BPID)-1, fitted(mb1.1));res.hltest1
+nes96$outhl2 <-ifelse(nes96$FPID=="Independent",0,1)
+res.hltest2<-hoslem.test(nes96$outhl2[nes96$FPID != 
+        "Democratic"], fitted(mb2.1));res.hltest2
+```
+
+# Point 13
+
+**Calculate the predicted probabilities for the 3 ideologies in 40-year-old women with no education and median income. Use the mb1.1 and mb2.1 models**
+
+*HL1. Medium income is 37.5, thus intercept use is enough. Logodds Other to Democratic is 0.274 and Other probability is exp(coef(mb1.1)[1])/(1+exp(coef(mb1.1)[1]))=0.568. Thus Democratic probability is 1-0.568=0.432.*
+
+*HL2. Logodds of Republican to Independent for the particular observation is 0.283 and using the response function Republican conditional to Other probability is 0.57 and Independent conditional to Other is 0.43. Thus Republican probability is Other Probability by Republican | Other probability 0.568x0.570=0.324. And Thus Independent probability is Other Probability by Independent | Other probability 0.568x0.430=0.244.*
+
+*Adding up all probabilities 0.432  + 0.244 + 0.324 is 1, as it should be.*
+
+```{r}
+coef(mb1.1)
+exp(coef(mb1.1)[1])
+exp(coef(mb1.1)[1])/(1+exp(coef(mb1.1)[1])) # Other
+1-exp(coef(mb1.1)[1])/(1+exp(coef(mb1.1)[1])) # Democratic
+coef(mb2.1)
+exp(coef(mb2.1)[1])
+exp(coef(mb2.1)[1])/(1+exp(coef(mb2.1)[1])) # Republican | Other
+1-exp(coef(mb2.1)[1])/(1+exp(coef(mb2.1)[1])) # Independent | Other
+(exp(coef(mb2.1)[1])/(1+exp(coef(mb2.1)[1])))*exp(coef(mb1.1)[1])/(1+exp(coef(mb1.1)[1])) # Republican 
+(1-exp(coef(mb2.1)[1])/(1+exp(coef(mb2.1)[1])))*exp(coef(mb1.1)[1])/(1+exp(coef(mb1.1)[1])) # Independent 
+```
+
+# Point 14
+
+**Determine the estimated parameters for HL1 and HL2 probit null models.**
+
+*Democratic probability in the sample is 0.4025 thus probability of Other is 0.5975 and Republican | Other is 0.5762. Probit transformation for these probabilities are qnorm(c(0.5975,0.5762))-> 0.247 and 0.192, respectively, thus constant estimates for null logit models HL1 and HL2. Results from R for comparison purposes can be seen below.*
+
+```{r}
+prop.table(table(nes96$BPID))
+prop.table(table(nes96$FPID[nes96$BPID!="Democratic"]))
+pother0 <-prop.table(table(nes96$BPID))[2]
+pdem0 <-prop.table(table(nes96$BPID))[1];pdem0
+prep0 <-prop.table(table(nes96$FPID[nes96$BPID!="Democratic"]))[3];prep0
+pind0 <-prop.table(table(nes96$FPID[nes96$BPID!="Democratic"]))[2];pind0
+# log(pother0/(1-pother0))
+# log(prep0/(1-prep0))
+qnorm(pother0)
+qnorm(prep0)
+# Not given in the output, just for validation purposes
+mb1.0 <- glm(formula = BPID ~ 1, 
+    family = binomial(link = "probit"), data = nes96)
+mb2.0 <- glm(formula = FPID ~ 1, 
+    family = binomial(link = "probit"), data = nes96[nes96$FPID != 
+        "Democratic", ])
+
+summary(mb1.0)
+summary(mb2.0)
+```
+
+**The third attempt is the proportional odds modelling, estimated from the point of view of latent variable in R. Answer the questions accurately based on the contents presented in the subject and the indicated results of specific models.**
+
+# Point 15
+
+**Determine which of the available proposals for proportional odds modelling is most successful. Assess whether the proposed model fits well with the data.**
+
+*Linear term of nincome gross effect (model om1) is signficant according to deviance test anova(om0, om1, test="Chisq") << 0.05 given in the output. Adding quadratic term of nincome to om1 is shown on om11 and testing its net-effect shows a pvalue of 0.06 (border line). Nevertheless, it can be seen in the output AIC(om1) > AIC(om11). So, linear and quadratic terms are retained under the numeric treatment.*
+
+*Income factor model om2 shows AIC(om2)=2030 > AIC(om11)=2000. Then, om11 seems to be the best modelling proposal available so far for ordinal treatment.*
+
+*Goodness of fit for any om1, om11 and om2 show residual deviances being greater than residual degrees of freedom. So, missfit is present.*
+
+
+```{r}
+om1<-polr(formula = FPID ~ I(nincome - 37.5), data = nes96)
+om11<-polr(formula = FPID ~ I(nincome - 37.5) + I((nincome - 37.5)^2),data = nes96)
+om2<-polr(formula = FPID ~ income,data = nes96)
+summary(om2)
+AIC(om1,om11, om2)
+
+om1$deviance;om1$edf;2*nrow(nes96)-om1$edf
+om11$deviance;om11$edf;2*nrow(nes96)-om11$edf
+om2$deviance;om2$edf;2*nrow(nes96)-om2$edf
+```
+
+
+# Point 16
+
+**Interpret the effect of the income covariate on the scale of proportional odds for om1 model.**
+
+*Latent variable paradigm applies for polr() method in MASS library, so proportional odds estimates for explanatory variables need to reverse signs. Odds for Democratic to Rest or Independent to Republican are decreased by  100x(1-exp(-coef(om1)[1]))= 1.3% for each unit increment in covariate nincome.*
+
+*Since om1 summary was not available in the outputs it was indicated during the exam to interpret the lineal term of om11.*
+
+```{r}
+summary(om1)
+-coef(om1)[1]
+100*(1-exp(-coef(om1)[1]))
+summary(om11)
+-coef(om11)[1]
+100*(1-exp(-coef(om11)[1]))
+```
+
+
+# Point 17
+
+**Calculate the predicted probabilities for the 3 ideologies in 40-year-old women with no education and median income for om11 model**
+
+*Again, only nincome covariate is included in om11 model and it is centered on median income (37.5), so only intercept estimates have be taken into account. Cumulative log-odds are -0.3557 and 0.73, thus logit response function has to be applied to these values to get cumulative probabilities for Democratic and Democratic+Independent, being 0.412 and 0.675. Thus, predicted probability based on om11 model for the requested observation would be Democratic probability 0.412, Independent probability 0.675-0.412=0.263 and Republican probability 1-0.675=0.325. These values are validated using generic predict method in R.* 
+
+```{r}
+predict(om11,newdata=data.frame(nincome=37.5),type="probs")
+summary(om11)
+clogodds <- om11$zeta; clogodds
+expclogodds <- exp( clogodds ); expclogodds
+probs<-expclogodds/(1+expclogodds);probs
+probdem <- probs[1]
+probind <- probs[2]-probs[1]
+probrep <- 1-probs[2]
+probdem;probind;probrep
+```
+
+# Point 18
+
+**Assess the predictive power of the chosen model in the output using ordinal response and the improvement over the null model.**
+
+*Confusion tables for a non-specified model and null proportional odds models are given in the output. Accuracy for the null model is 40.25% and 46.93% for the alternative model. So it is very similar to the values obtained before.*
+
+
+```{r}
+poprobx <- predict(om2,type="class")
+om0<-polr(formula = FPID ~ 1, data = nes96)
+poprob0 <- predict(om0,type="class")
+table(poprobx,nes96$FPID);table(poprob0,nes96$FPID)
+
+100*sum(diag(table(poprobx,nes96$FPID)))/sum(table(poprobx,nes96$FPID))
+100*sum(diag(table(poprob0,nes96$FPID)))/sum(table(poprob0,nes96$FPID))
+```
+
+# Point 19
+
+**Determine the estimated zeta (cut-off) points for the null model in the ordinal proposal when logit and probit link functions are stated**
+
+*Cumulative probabilities for Democratic and Democratic+Independent in the sample are 0.403 and 0.656.*
+
+*Logit transformation has to be applied to cumulative sample probabilities to get intercepts estimates for null model, being -0.395 and 0.644, respectively.*
+
+*Probit transformation has to be applied to cumulative sample probabilities to get intercepts estimates for null model, being -0.247 and 0.401, respectively.*
+
+*Results are consistent with estimates provided by R*.
+
+```{r}
+prop.table(table(nes96$FPID))
+cprop <-c(prop.table(table(nes96$FPID))[1],prop.table(table(nes96$FPID))[1]+prop.table(table(nes96$FPID))[2]);cprop
+names(cprop)<-c("Democratic", "Independent")
+codds <- cprop/(1-cprop);codds
+logcodds <- log(codds);logcodds
+probitcum <- qnorm(cprop); probitcum
+om0<-polr(formula = FPID ~ 1, data = nes96)
+om0$zeta
+om0p<-polr(formula = FPID ~ 1, data = nes96, method="probit")
+om0p$zeta
+```
+
+# Point 20
+
+**Which of the 3 proposals, nominal multinomial, hierarchical logit or proportional logodds, is the most satisfactory?**
+
+*Best models for nominal, HL and ordinal treatment are fit.1, mb1.1-mb2.1 and om11. AIC statistics can be found in the output to be 1993.424, 1993.42 and 1999.956, respectively. So, Hierarchical logit treatment or Multinomial treatments give the lowest AIC statistic. Additionally, if available a discussion about accuracy would be useful to take the final decision. Taking a look to accuracy and/or F1-Score is convenient, but you do not have available all the needed data. HL has a priori advantage, it pays more attention to Independent units, that fail to be predicted with Multinomial and Ordinal treatments, again you can not use quantitatively this argument.*
+
+```{r}
+AIC(fit.1)
+AIC(mb1.1)+AIC(mb2.1)
+AIC(om11)
+100*sum(diag(table(poprobx,nes96$FPID)))/sum(table(poprobx,nes96$FPID))
+```
+
