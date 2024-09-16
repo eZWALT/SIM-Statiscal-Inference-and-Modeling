@@ -1,0 +1,112 @@
+---
+title: "Practice_1"
+author: "Walter J.T.V"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+## Dataset
+We are going to use the prestige dataset which has 102 rows of dfferent professions and its associated infered prestige percieved by society
+
+```{r}
+rm(list=ls())
+library(car)
+prestige_df <- Prestige
+head(prestige_df)
+```
+
+## Univariate outlier detection
+Detection of univariate outliers using boxplots.
+- Mild outliers: fall between the range (Q1 - 1.5IQR, Q3 + 1.5IQR)
+- Extreme outliers: fall between the range (Q1 - 3IQR, Q3 + 3IQR)
+
+The IQR (inter qualite range) is computed IQR = Q3 - Q1
+
+```{r}
+#Remove census column
+prestige_df$census <- NULL
+names(prestige_df)
+numeric_prestige <- prestige_df[, c("education", "income", "women", "prestige")]
+summary(numeric_prestige)
+
+prestige_box <- boxplot(numeric_prestige$prestige) # No mild outliers and no severe outliers either
+
+``` 
+
+Prestige variable has no outliers, now lets check the average income
+
+```{r}
+boxplot(numeric_prestige$income, horizontal = T, col= "blue") # There are outliers
+income_summary <- summary(numeric_prestige$income)
+
+iqr <- income_summary[5] - income_summary[2]
+upmild <- income_summary[5] + 1.5*iqr
+upextreme <- income_summary[5] + 3*iqr
+
+boxplot(numeric_prestige$income, horizontal=T, col="blue")
+abline(v=upmild, col="orange")
+abline(v=upextreme, col="red")
+
+mild_outliers_ids <- which( (prestige_df$income > upmild) & (prestige_df$income < upextreme))
+
+ext_outliers_ids <- which( (prestige_df$income > upextreme))
+
+mild_outliers <- prestige_df[mild_outliers_ids, ]
+ext_outliers <- prestige_df[ext_outliers_ids, ]
+
+income_box <- Boxplot(numeric_prestige$income, col="green", id = list(labels=rownames(prestige_df)))
+income_box
+
+#Range can specify the Quartiles
+```
+
+
+## Multivariate outlier detection
+Now we are going to define a distance measure in order to detect **Multivariate outliers** using an iterative algorithm. That is the Mahalanobis distance. 
+
+Mahanalobis distances follows a chi-squared distribution, therefore the distance depends in the distance from the center of gravity 
+
+
+NOTE: 
+
+```{r}
+  library(chemometrics)
+  res.mout <- Moutlier(numeric_prestige, quantile=0.95)
+  plot(x=res.mout$md, y=res.mout$rd, main="Mahalanobis: Classic vs Robust", xlab="Classic distance", ylab="Robust distance")
+  abline(v=res.mout$cutoff, col="red")
+  abline(h=res.mout$cutoff, col="red")
+  text(res.mout$md, res.mout$rd, labels=rownames(numeric_prestige))
+  
+  mv_outliers <- which( (res.mout$md > res.mout$cutoff) & (res.mout$rd > res.mout$cutoff))
+  
+  res.mout$cutoff^2 == qchisq(0.95, 4)
+```
+
+## Missing Data Types
+
+There are different kinds of missing data:
+
+- Non-response (All variables are null in an observation)
+- Missing values (One or two variables)
+- Drop outs (Several missing variables in an observation)
+
+And just removing missing data is bad for the model generalization, but there are 3 procedures:
+
+- Removal of observations with missing data (Bias in results)
+- Unconditional mean imputation (HORRIBLE)
+- Regression imputation
+
+Following up we can see an example of imputation using the mice library
+
+```{r}
+
+```
+  
+  
+
+
+
