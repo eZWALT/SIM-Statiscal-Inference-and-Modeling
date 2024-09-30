@@ -1,0 +1,143 @@
+---
+title: "Lab1_Group12_16092024"
+author: "Josep Franquet"
+date: "2024-09-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+if(!is.null(dev.list())) dev.off() # Clear plots in case these are present
+```
+
+```{r}
+rm(list=ls()) # Remove all variables that are in the current workspace
+```
+
+```{r}
+library(car) # Load the package car in the current workspace
+
+Prestige
+df <- Prestige # Create df with Prestige data
+# To see the types of columns that we have in our df:
+str(df)
+```
+```{r}
+names(df)
+```
+
+```{r}
+head(df)
+```
+```{r}
+summary(df)
+```
+```{r}
+# Some plots are done:
+boxplot(df$prestige)
+boxplot(df$income, horizontal = TRUE)
+```
+# Univariate outliers detection
+
+```{r}
+varout <- summary(df$income)
+
+# Interquartile range calculation:
+iqr <- varout[5] - varout[2]
+
+# Mild outliers limits:
+umout <- varout[5] + 1.5*iqr # Upper extreme for mild outliers
+usout <- varout[5] + 3*iqr # Upper extreme for extreme outliers
+boxplot(df$income, horizontal = TRUE)
+abline(v = umout, col = "orange", lwd = 2)
+abline(v = usout, col = "red", lwd = 2)
+```
+```{r}
+# Function to get the 5 specific quantiles (including the quartiles) of income distribution:
+quantile(df$income)
+# These are the deciles:
+quantile(df$income, prob = seq(0,1,by=0.1))
+```
+```{r}
+# All variables with combinations of 2:
+plot(df)
+# Reduce the number of variables:
+plot(df[,1:4])
+```
+```{r}
+plot(df$income, df$prestige)
+# Some title and format:
+plot(df$income, df$prestige, main = "Prestige vs Income", pch = 19, col="cyan")
+```
+
+```{r}
+# Other plots for numerical variables:
+hist(df$income)
+```
+
+```{r}
+# This is for categorical variables:
+table(df$type) # Contingency table
+barplot(table(df$type))
+pie(table(df$type))
+```
+
+# Missing data
+
+```{r message=FALSE, warning=FALSE}
+library(missMDA)
+library(FactoMineR)
+library(mice)
+```
+
+```{r}
+# I will assume this is not possible, considered an error:
+ll <- which(df$women == 0)
+df[ll, "women"] <- NA
+summary(df)
+``` 
+
+```{r}
+# It computes a PCA behind the scenes and finds the closest individuals to the ones which have missing data:
+# Imputation for numeric variables:
+res.misMDA <- imputePCA(df[,1:4])
+res.misMDA$completeObs
+```
+```{r}
+# Imputation for categorical variables:
+df$census <- factor(df$census)
+res.misMCA <- imputeMCA(df[,5:6])
+```
+
+Imputation on numeric and categorical variables at the same time:
+
+```{r}
+df$census <- as.numeric(df$census)
+res.imp <- mice(df)
+summary(complete(res.imp))
+```
+
+I will create df from complete dataframe after the imputation using `mice`.
+
+```{r}
+df <- complete(res.imp)
+```
+
+# Multivariant Outlers:
+
+```{r}
+library(chemometrics)
+res.mout <- Moutlier(df[,1:4], quantile = 0.995)
+sqrt(qchisq(0.005, 4, lower.tail = FALSE))
+res.mout$cutoff == sqrt(qchisq(0.005, 4, lower.tail = FALSE))
+```
+```{r}
+plot(res.mout$md, res.mout$rd, col= "cyan", pch = 19)
+abline(h=res.mout$cutoff, col = "red")
+abline(v=res.mout$cutoff, col = "red")
+text(res.mout$md, res.mout$rd, label = row.names(df), cex = 0.5)
+```
+All individuals which have an rd and an md higher than the limits should be considered multivariate outliers.

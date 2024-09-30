@@ -103,7 +103,10 @@ And just removing missing data is bad for the model generalization, but there ar
 Following up we can see an example of imputation using the mice library
 
 ```{r}
-
+library(mice)
+summary(prestige_df)
+res.mice <- mice(prestige_df)
+summary(complete(res.mice))
 ```
   
   
