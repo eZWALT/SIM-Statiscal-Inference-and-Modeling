@@ -1,0 +1,70 @@
+---
+title: "Lab1-Session2"
+author: "Walter J.T.V"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Lab 1 - Session2 - Prestige Imputation
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+```{r}
+
+library(car)
+library(missMDA) #FactoMineR
+library(mice)
+
+Prestige <- Prestige
+df <- Prestige
+df$census <- NULL
+
+#Define a binary factor variable "f.prof":  (Yes, Prof), (No, Rest) if an observation is a professor
+df$f.prof <- 0
+df$f.prof[df$type =="prof"] <- 1
+df$f.prof <- factor(df$f.prof, labels=c("No", "Yes"))
+summary(df)
+```
+## Imputation
+### Numeric variables
+Artificially inducing missing data just for demonstration purposes. 
+The imputation is never done by the mean, therefore we are going to do imputation using PCA numeric variables. That will make the imputed value multidimensionally coherent with all the other variables (Multivariate properties). 
+```{r}
+#Assume women==0 is missing data
+ll <- which(df$women == 0)
+df$women[ll] <- NA
+summary(df)
+
+# imputePCA() --> numeric vars
+# imputeMCA() --> factor vars
+
+res.impPCA <- imputePCA(df[, 1:4])
+summary(res.impPCA$completeObs)
+```
+This PCA could land extreme values, negative ones or others that might not make sense at all, so we are going to check the difference in distributions from the original data vs the one that has recieved imputation. Taking a look into their quantiles or histogram would be enough
+
+```{r}
+
+q1 <- quantile(df$women, prob=seq(0, 1, 0.1), na.rm=T)
+q2 <- quantile(res.impPCA$completeObs[,3], prob=seq(0,1,0.1))
+```
+Note: completeObs is a data-frame containing the result
+Alternatively, we could perform the imputation using the MICE library 
+
+```{r}
+?mice
+res.mice <- mice(df)
+summary(complete(res.mice))
+```
+### Categorical variables
+
+```{r}
+
+df$type <- Prestige$type 
+res.impMCA <- imputeMCA(df[c("type", "f.prof")])
+
+#Before and after
+summary(df[c("type", "f.prof")])
+summary(res.impMCA$completeObs)
+```

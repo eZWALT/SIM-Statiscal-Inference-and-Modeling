@@ -1,0 +1,80 @@
+---
+title: "CSI-1-Prestige"
+author: "Walter J.T.V"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Exercise
+
+## Libraries
+
+```{r}
+library(car)
+library(mice)
+library(missMDA)
+library(EnvStats) # For variance tests
+```
+
+Response to study:  prestige of occupation. 
+
+Firstly, create a new factor, dichotomy, indicating if an occupation refers to professional and managerial duties or not. Afterwards, answer the following questions, using graphical and inferential tools.
+
+1. Does prestige seem to be normally distributed? 
+2. Calculate a 95% CI for prestige mean.
+3. Calculate a 95% CI for prestige variance.
+4. Does prestige depend on the type of occupation? Or on having professional/managerial  profile?  Formulate and quantify pvalues for testing group means.
+5. Does the dispersion of prestige depend on the type of occupation? Or on having professional/managerial  profile?  Formulate and quantify pvalues for testing group variances.
+6. How would you test whether the prestige between blue and white collar occupations significantly differ or not?
+7. Use condes() in FactoMineR package to check your previous conclusions.
+
+## 1. Prestige distribution
+
+Computing its mean and standard deviation we will compare the histogram to the result of the normal function using as parameters the computed mean and std. 
+```{r}
+
+df <- Prestige
+prestige_mean = mean(df$prestige)
+prestige_sd = sd(df$prestige)
+
+#The curve command is linked to the histogram therefore "x" is the same data
+#hist(df$prestige, breaks = 12, freq = FALSE, col = "red", main = "Histogram of Prestige vs Normal Curve", xlab = "Prestige", ylab = "Density")
+#curve(dnorm(x, mean = prestige_mean, sd = prestige_sd), col = "blue", lwd = 2, add = TRUE)
+qqnorm(df$prestige, main="Q-Q Plot for Prestige", xlab= "Theoretical quantiles :)", ylab="Sample quantiles")
+qqline(df$prestige, col="red", lwd=2)
+
+#Perform a SHAPIRO normality test. H0: prestige is normally distributed  
+shapiro.test(df$prestige)
+
+#Perform a Kolmogorov Smirnov general purpose test  (To test between 2 probability distributions)
+ks.test(df$prestige, "pnorm", mean=prestige_avg, sd=prestige_std)
+```
+## 2. Mean confidence interval (95%)
+
+Now we are going to check if the mean is equal to 50 with a 95% confidence interval. We also want to see with a 99% confidence interval if the mean is less than 50. Given that we don't know the true population parameters we will use t-test. 
+
+Conclusion: We fail to reject the Null
+```{r}
+
+#Two-sided (Ho: mu = 50)
+t.test(df$prestige, conf.level=0.95, mu=50, alternative= "two.sided")
+
+#One sided (Ho: mu < 50)
+t.test(df$prestige, conf.level=0.99, mu=50, alternative="less")
+
+#Non-parametric test example W (Great for not normally distributed data)
+wilcox.test(df$prestige, mu=50, conf.int=T)
+```
+
+## 3. Variance confidence interval (95%)
+
+Following up a testing on the variance will be made
+
+Conclusion:
+
+```{r}
+
+``` 
+
+
+## 4. Prestige and occupation Relationship
