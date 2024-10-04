@@ -23,7 +23,6 @@ Firstly, create a new factor, dichotomy, indicating if an occupation refers to p
 1. Does prestige seem to be normally distributed? 
 2. Calculate a 95% CI for prestige mean.
 3. Calculate a 95% CI for prestige variance.
-4. Does prestige depend on the type of occupation? Or on having professional/managerial  profile?  Formulate and quantify pvalues for testing group means.
 5. Does the dispersion of prestige depend on the type of occupation? Or on having professional/managerial  profile?  Formulate and quantify pvalues for testing group variances.
 6. How would you test whether the prestige between blue and white collar occupations significantly differ or not?
 7. Use condes() in FactoMineR package to check your previous conclusions.

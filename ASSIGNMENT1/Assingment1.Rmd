@@ -1,0 +1,174 @@
+---
+title: "Assingment1"
+author: "Walter and Joan and Anna"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Cancer Mortality Analysis
+
+## Description 
+
+This project aims to analyse data from the famous "Cancer Mortality" open data set which contains over 3000 observations and 33 variables, included the target variable **target deathrate**.
+
+We will follow a common data analysis pipeline:
+
+```
+Ingestion -> Cleaning -> Transformations -> EDA -> Feature Engineering -> Model selection -> evaluation
+```
+
+Credits:
+- Anna Monso
+- Joan Acero
+- Walter Troiani
+
+## 1. Data Ingestion 
+
+```{r}
+library(mice)
+library(missMDA)
+library(car)
+setwd("~/Escritorio/College/Q9/SIM/ASSIGNMENT1")
+test_df <- read.csv("test.csv",)
+train_df <- read.csv("train.csv")
+
+names(train_df)
+```
+
+## 2. Variable analysis 
+
+
+```{r}
+head(train_df)
+
+```
+
+*Observations* refer to huge populations of people (100K) that reside in same U.S county. 
+
+
+The main *variables* we can see can be grouped in diferent parts. 
+
+- **Demographical Data**:
+  - *Ages*: 
+    - `medianage` (Median age of the population)
+    - `medianagemale` (Median age of males)
+    - `medianagefemale` (Median age of females)
+  - *Population*: 
+    - `popest2015` (Population estimate for 2015)
+    - `birthrate` (Birth rate)
+  - *Marital Status*: 
+    - `percentmarried` (Percentage of individuals married)
+    - `pctmarriedhouseholds` (Percentage of married households)
+  - *Racial Demographics*: 
+    - `pctwhite` (Percentage of White population)
+    - `pctblack` (Percentage of Black population)
+    - `pctasian` (Percentage of Asian population)
+    - `pctotherrace` (Percentage of Other Races)
+
+- **Economic Data**:
+  - *Income*: 
+    - `medincome` (Median household income)
+  - *Poverty*: 
+    - `povertypercent` (Percentage of population below the poverty line)
+  - *Study Spending*: 
+    - `studypercap` (Per capita study spending)
+  - *Binned Income*: 
+    - `binnedinc` (Income categorized into bins)
+
+- **Geographical Data**:
+  - `geography` (Represents U.S. counties)
+
+- **Cancer Statistics**:
+  - `avganncount` (Average annual cancer cases)
+  - `avgdeathsperyear` (Average cancer-related deaths per year)
+  - `target_deathrate` (Targeted death rate per 100,000 people)
+  - `incidencerate` (Cancer incidence rate per 100,000 people)
+
+- **Educational Data**:
+  - *Education for Age 18-24*:
+    - `pctnohs18_24` (Percentage with no high school education)
+    - `pcths18_24` (Percentage with a high school diploma)
+    - `pctsomecol18_24` (Percentage with some college education)
+    - `pctbachdeg18_24` (Percentage with a bachelor's degree)
+  - *Education for Age 25 and Over*:
+    - `pcths25_over` (Percentage with a high school diploma)
+    - `pctbachdeg25_over` (Percentage with a bachelor's degree)
+
+- **Employment Data**:
+  - `pctemployed16_over` (Percentage of population aged 16+ employed)
+  - `pctunemployed16_over` (Percentage of population aged 16+ unemployed)
+
+- **Healthcare Coverage**:
+  - *Private Insurance*:
+    - `pctprivatecoverage` (Percentage with any private coverage)
+    - `pctprivatecoveragealone` (Percentage with private coverage only)
+    - `pctempprivcoverage` (Percentage of employed population with private coverage)
+  - *Public Insurance*:
+    - `pctpubliccoverage` (Percentage with any public coverage)
+    - `pctpubliccoveragealone` (Percentage relying solely on public coverage)
+    
+    
+```{r}
+
+#train_df[1, c("pctwhite", "pctblack", "pctemployed16_over", "geography")]
+hist(train_df$pctwhite)
+
+```
+
+## 3. Data Cleaning
+
+```{r}
+summary(train_df)
+```
+
+### 3.1 Missing values & Imputation
+```{r}
+md.pattern(x=train_df, rotate.names=TRUE)
+```
+
+### 3.2 Outlier detection & handling
+
+
+```{r}
+
+```
+
+## 4. Data Transformations 
+
+```{r}
+
+```
+
+## 5. Exploratory Data Analysis
+
+```{r}
+
+```
+
+## 6. Modeling
+
+We are going to implement various linear models to predict the response variable: **target_deathrate**. 
+
+k-fold cross validation where k = 10 
+:)
+
+```{r}
+
+```
+
+
+## 7. Evaluation
+
+```{r}
+
+```
+
+## 8. Assesing final questions 
+
+Finally we need to asses some relevant statistical questions:
+
+- Multicollinearity 
+- Normality of residual distribution
+- Linearity of the model (Parameters)
+- Serial independence of errors
+- Heteroskedasticity
