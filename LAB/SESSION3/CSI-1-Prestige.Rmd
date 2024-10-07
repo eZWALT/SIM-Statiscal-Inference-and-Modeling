@@ -198,7 +198,5 @@ res_cat$test.chi2
 
 #Levels in factors in df that are related to target levels (type)
 res_cat$category
-
-res_cat$quanti
 ```
 

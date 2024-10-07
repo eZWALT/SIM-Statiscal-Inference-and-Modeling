@@ -1,0 +1,45 @@
+---
+title: "swiss_labor"
+author: "Walter and Joan and Anna"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Swiss Labor force Analysis
+
+## Introduction 
+
+Cross-section data originating from the health survey SOMIPOPS for Switzerland in 1981. The concern is about female labor force participation for a sample of 872 **women** from Switzerland. The response variable is participation which is regressed on all further variables plus age square, i.e., on income, education, age, numbers of younger and older children and the factor foreign which indicates citizenship. 
+
+Response to study:  income. 
+    • Does the nonlabor income depend on foreigner status or not?
+    • Does the participation in labor force depend on the family income?
+
+Target variable: **participation** and **income**
+
+## 0. Participation analysis & description
+```{r}
+setwd("~/Escritorio/College/Q9/SIM/LAB/SESSION3")
+library(AER)
+
+data("SwissLabor")
+df <- SwissLabor
+names(df)
+
+res_cat <- catdes(df, num.var=1)
+
+res_cat$test.chi2
+
+res_cat$quanti.var
+
+res_cat$quanti
+
+res_cat$category
+```
+
+
+## 1. Relation between income and foreigner
+Does the nonlabor income depend on foreigner status or not?
+
+## 2. Relation between participation and family income
+Does the participation in labor force depend on the family income?
