@@ -1,0 +1,143 @@
+---
+title: "simple_linear_regression"
+author: "Walter J.T.V"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Simple Linear Regression
+
+2 tools for validating models (even if they are not lineal): 
+
+- Residual analysis 
+- Cross Validation
+
+## 1. Dataset Loading
+
+```{r}
+
+load("Anscombe73raw.RData")
+names(anscombe)
+df <- anscombe
+```
+
+## 2. Dataset A
+
+```{r}
+
+
+
+model_a <- lm(YA ~ XA, data=df)
+summary(model_a)
+# The model is Ya = 3.0001 + 0.5001Xa + e_x
+# A hypothesis testing of the true values of the parameters is performed with the summary
+# 1. Ho: B1 = 0, H1: B1 != 0  
+# 2. Ho: B2 = 0, H1: B2 != 0
+
+# Also residual standard error S² = RSS/n-p with n-p degrees of freedom (p is the num of vars)
+# Also multiple R-squared are presented (How many variability is explained by the model)
+# The rest is explained by the residuals
+
+# Finally a F-statistic and it's p-value are computed: F = MeanSquareRegression / MeanSquareResiduals
+# This tells us how 
+
+
+plot(df$XA, df$YA, pch=19, col="black")
+lines(df$XA, fitted.values(model_a), col="red")
+```
+
+```{r}
+
+plot(model_a, id.n=0)
+
+# Residuals vs Fitted: We want to check that residuals are random and do not follow a pattern, otherwise it means that a lot of patterns and variance are left unexplained. WE WANT TO CHECK LINEARITY AND HOMOSCEDASTICITY
+
+# If u-shape or curved patterns are met, then its either heteroscedastic or not linear
+
+# Q-Q Residuals: Quantiles of residuals are plot to check if residuals are normally distributed
+
+# Scale-Location: To check an assumption like homoscedasticity (Constant variance of errors)
+
+```
+## 3. Model B 
+```{r}
+
+model_b <- lm(YB ~ XB, data=df)
+summary(model_b)
+
+plot(df$XB, df$YB, col="black", pch=19)
+lines(df$XB, model_b$fitted.values, col="red")
+```
+Looking at the Residual vs Fitted plot we can asses that residuals do not follow a random noise, they follow a pattern, then the model is not linear nor obey homocedasticity.
+
+On scale location we can also see a weird pattern that points out that the variance of residuals is not constant.
+```{r}
+
+plot(model_b)
+
+```
+
+
+Lets create a new quadratic model B and get funky 
+
+```{r}
+model_b2 <- lm(YB ~ XB + I(XB^2), data=df)
+summary(model_b2)
+#The models fits perfectly the data
+
+plot(model_b2)
+#lines(df$XB, model_b2$fitted.values, col="red")
+```
+
+## 4. Model C
+
+```{r}
+
+model_c <- lm(YC ~ XC, data=df)
+summary(model_c)
+
+plot(df$XC, df$YC, col="darkgreen", main="Dataset C")
+text(df$XC, df$YC, label=rownames(df), col="darkgreen", adj=-1)
+lines(df$XC, model_c$fitted.values, col="blue")
+
+```
+
+Cook distance can be used to detect influential data (OUTLIERS)
+```{r}
+library(car)
+boxplot(resid(model_c))
+plot(model_c)
+boxplot(cooks.distance(model_c))
+influencePlot(model_c)
+
+```
+
+Lets erase the outlier and get funky:
+
+```{r}
+
+model_c2 <- lm(YC ~ XC, data=df[-3,])
+summary(model_c2)
+
+```
+
+## 5. Model D 
+
+```{r}
+
+model_d <- lm(YD ~ XD, data=df)
+summary(model_d)
+
+
+plot(df$XD, df$YD, pch=19, col="blue", main="Dataset D")
+lines(df$XD, model_d$fitted.values, col="red")
+```
+
+```{r}
+
+plot(model_d)
+
+cooks.distance(model_d)
+hatvalues(model_d)
+
+```

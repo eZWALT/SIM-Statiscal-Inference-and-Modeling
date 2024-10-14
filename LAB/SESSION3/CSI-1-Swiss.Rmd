@@ -28,18 +28,26 @@ names(df)
 
 res_cat <- catdes(df, num.var=1)
 
-res_cat$test.chi2
+#res_cat$test.chi2
 
 res_cat$quanti.var
-
-res_cat$quanti
-
-res_cat$category
 ```
 
+```{r}
+res_cat$quanti
+
+#res_cat$category
+```
 
 ## 1. Relation between income and foreigner
 Does the nonlabor income depend on foreigner status or not?
 
+```{r}
+
+```
 ## 2. Relation between participation and family income
 Does the participation in labor force depend on the family income?
+
+```{r}
+
+```
