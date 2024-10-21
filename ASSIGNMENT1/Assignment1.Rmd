@@ -1,0 +1,127 @@
+---
+title: 'Assignment1: CancerMortality'
+author: "Joan Acero, Anna Monsó, Walter Troiani"
+date: "2024-10-21"
+output:
+ pdf_document:
+   toc: true
+---
+
+
+\newpage
+
+HINT: Retain all available numeric variables except those that are not useful in explaining the target.
+
+
+# Load the dataset
+```{r}
+
+rm(list=ls())
+train <- read.csv("train.csv")
+test <- read.csv("test.csv")
+
+
+```
+
+# Data Preparation
+
+## Univariate Descriptive Analysis (Variable Analysis)
+
+For each variable: 
+
+- Original numeric variables corresponding to qualitative concepts have to be converted to factors
+
+```{r}
+
+# Include Code
+
+
+```
+
+- Original numeric variables corresponding to real quantitative concepts are kept as numeric but additional factors should also be created
+
+```{r}
+
+#Include Code
+
+```
+
+- Exploratory Data Analysis for each variable (numeric summary and graphic support).
+
+```{r}
+
+#Include Code
+
+```
+
+
+## Data Quality Report 
+
+Per variable, count:
+
+- Number of missing values
+- Number of errors (including inconsistencies)
+- Number of outliers
+-Rank variables according the sum of missing values (and errors)
+
+```{r}
+
+#Include Code
+
+```
+
+
+Per individuals, count:
+
+- Number of missing values
+- Number of errors
+- Number of outliers
+- Identify individuals considered as multivariant outliers.
+
+```{r}
+
+#Include Code
+
+```
+
+Create a variable adding the total number of missing values, outliers and errors. Describe these variables, to which other variables exist higher associations.
+
+- Compute the correlation with all other variables. Rank these variables according the correlation
+- Compute for every group of individuals the mean of missing/outliers/error values. Rank those groups according the computed mean. 
+
+```{r}
+
+#Include Code
+
+```
+
+
+# Imputation
+
+- Numeric Variables
+- Factors
+
+```{r}
+
+#Include Code
+
+```
+
+
+# Profiling
+
+- Target : Death rate
+
+
+```{r}
+
+#Include Code
+
+```
+
+
+
+
+
+
+
