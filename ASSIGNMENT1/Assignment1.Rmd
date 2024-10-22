@@ -15,8 +15,8 @@ editor_options:
 - Should we remove the outliers, apply transformations, etc.in the first analysis of the variables (Variable Analysis) ?
 
 
-\newpage
-
+\newpage 
+ 
 
 # Load the dataset and required libraries
 ```{r}

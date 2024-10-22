@@ -1,0 +1,11 @@
+\contentsline {section}{Load the dataset and required libraries}{2}{section*.2}%
+\contentsline {section}{Define some functions to avoid repetition of same processes}{2}{section*.3}%
+\contentsline {section}{Data Preparation}{3}{section*.4}%
+\contentsline {subsection}{Univariate Descriptive Analysis (Variable Analysis)}{3}{section*.5}%
+\contentsline {subsubsection}{Variable \emph {avganncount}}{3}{section*.6}%
+\contentsline {subsubsection}{Variable \emph {avgdeathsperyear}}{5}{section*.7}%
+\contentsline {subsubsection}{Variable \emph {target\_deathrate} :}{6}{section*.8}%
+\contentsline {subsubsection}{Variable \emph {incidencerate} :}{8}{section*.9}%
+\contentsline {subsection}{Data Quality Report}{9}{section*.10}%
+\contentsline {subsection}{Imputation}{10}{section*.11}%
+\contentsline {subsection}{Profiling}{10}{section*.12}%
