@@ -5,18 +5,26 @@ date: "2024-10-21"
 output:
  pdf_document:
    toc: true
+editor_options: 
+  chunk_output_type: console
 ---
 
+**HINT: Retain all available numeric variables except those that are not useful in explaining the target.**
+
+# Questions:
+
+- Should we analyse the 33 variables? Or remove first those that are not useful in explaining the target and make the analysis later?
+- Should we follow the steps followeed in the example (Data preparation outline) ?
 
 \newpage
-
-HINT: Retain all available numeric variables except those that are not useful in explaining the target.
 
 
 # Load the dataset
 ```{r}
 
 rm(list=ls())
+par(mfrow=c(1,2))
+
 train <- read.csv("train.csv")
 test <- read.csv("test.csv")
 
@@ -25,48 +33,64 @@ test <- read.csv("test.csv")
 
 # Data Preparation
 
+In this section, a descriptive analysis is conducted on each variable, a data quality report is generated, and imputation and profiling are addressed.
+
+
 ## Univariate Descriptive Analysis (Variable Analysis)
 
-For each variable: 
-
-- Original numeric variables corresponding to qualitative concepts have to be converted to factors
-
-```{r}
-
-# Include Code
-
-
-```
-
+- Original numeric variables corresponding to qualitative concepts have to be converted to factors:
 - Original numeric variables corresponding to real quantitative concepts are kept as numeric but additional factors should also be created
+- Exploratory Data Analysis for each variable (numeric summary and graphic support) --> TRAIN SAMPLE ONLY!
+
+### Variable *avganncount*
+
+*avganncount* is a numerical variable which expresses the "Mean number of reported cases of cancer diagnosed annually (2010-2015)". It has a median value of 175 and a range of 38143. The first and third quartiles show that the 25% of the values are lower or equal than 80, and the 75% of the values are lower or equal to 509, which is far away from the mean value of 623,2 and the maximum value of 38150. This characteristics indicate that the distribution is skewed.
+
+On the other hand, the boxplot visually confirms the skewness of the distribution. The whisker extending upwards and the large number of outliers above the upper quartile indicate a heavy right tail. This implies that while most of the average annual cancer case counts are relatively low, there are a few instances where the count is exceptionally high, potentially corresponding to large population centers or areas with higher cancer incidence rates.
 
 ```{r}
 
-#Include Code
+summary <- summary(train$avganncount)
+range <- (summary[[6]] - summary[[1]])
+boxplot(train$avganncount)
+plot(density(train$avganncount))
 
 ```
 
-- Exploratory Data Analysis for each variable (numeric summary and graphic support).
+### Variable *avgdeathsperyear*
+
+*avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer". It has a range of 14007, with a min. value of 3 and a max. value of 14010. The quartiles indicate that the 25% of the values are less or equal than 29, the 50% are less or equal than 62, and the 75% are less or equal than 140,5. The mean is 191.6, which is greater than the 3rd quartile, thus indicating that the 25% of the population with higher values have much greater values than the median. 
+
+The boxplot again confirms the skewness of the distribution, showing a large number of outliers. This implies that while the most of the mean number reported mortalities due to cancer are low, some instances report exceptionally high values, potentially corresponding to large population centers or/and areas with higher cancer incidence rates.
 
 ```{r}
 
-#Include Code
+variable <- train$avgdeathsperyear
+summary(variable)
+(summary(variable)[[6]] - summary(variable)[[1]])
+boxplot(variable)
+plot(density(variable))
 
 ```
+
 
 
 ## Data Quality Report 
 
 Per variable, count:
 
-- Number of missing values
-- Number of errors (including inconsistencies)
-- Number of outliers
--Rank variables according the sum of missing values (and errors)
+- Number of missing values.
+- Number of errors (including inconsistencies).
+- Number of outlines.
+-Rank variables according the sum of missing values (and errors).
+
 
 ```{r}
 
-#Include Code
+# Number of missing values.
+# Number of errors (including inconsistencies).
+# Number of outlines.
+# Rank variables according the sum of missing values (and errors).
 
 ```
 
@@ -78,9 +102,13 @@ Per individuals, count:
 - Number of outliers
 - Identify individuals considered as multivariant outliers.
 
+
 ```{r}
 
-#Include Code
+#Number of missing values
+#Number of errors
+#Number of outliers
+#Identify individuals considered as multivariant outliers.
 
 ```
 
@@ -96,7 +124,7 @@ Create a variable adding the total number of missing values, outliers and errors
 ```
 
 
-# Imputation
+## Imputation
 
 - Numeric Variables
 - Factors
@@ -108,9 +136,11 @@ Create a variable adding the total number of missing values, outliers and errors
 ```
 
 
-# Profiling
+## Profiling
 
 - Target : Death rate
+
+*Model fitting to train sample only!!*
 
 
 ```{r}
