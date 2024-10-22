@@ -10,26 +10,58 @@ editor_options:
 ---
 
 **HINT: Retain all available numeric variables except those that are not useful in explaining the target.**
+# Questions: 
 
-# Questions:
+- Should we remove the outliers, apply transformations, etc.in the first analysis of the variables (Variable Analysis) ?
 
-- Should we analyse the 33 variables? Or remove first those that are not useful in explaining the target and make the analysis later?
-- Should we follow the steps followeed in the example (Data preparation outline) ?
 
 \newpage
 
 
-# Load the dataset
+# Load the dataset and required libraries
 ```{r}
 
 rm(list=ls())
-par(mfrow=c(1,2))
+knitr::opts_chunk$set(fig.align='center', out.width='50%') # Manage output plots width and align
 
 train <- read.csv("train.csv")
 test <- read.csv("test.csv")
 
+library(moments)
+library(car)
 
 ```
+
+# Define some functions to avoid repetition of same processes
+```{r}
+
+calculate_outliers <- function(data) {
+  # Check for regular outliers
+  outliers <- boxplot.stats(data)$out
+  num_outliers <- length(outliers)
+
+  # Calculate the lower and upper bounds for severe outliers
+  Q1 <- quantile(data, 0.25)
+  Q3 <- quantile(data, 0.75)
+  IQR <- Q3 - Q1
+
+  lower_severe_bound <- Q1 - 3 * IQR
+  upper_severe_bound <- Q3 + 3 * IQR
+
+  # Identify severe outliers
+  severe_outliers <- data[data < lower_severe_bound | data > upper_severe_bound]
+  num_severe_outliers <- length(severe_outliers)
+
+  # Return the results as a list
+  return(list(
+    num_outliers = num_outliers,
+    num_severe_outliers = num_severe_outliers
+  ))
+}
+
+```
+
+\newpage
 
 # Data Preparation
 
@@ -40,38 +72,104 @@ In this section, a descriptive analysis is conducted on each variable, a data qu
 
 - Original numeric variables corresponding to qualitative concepts have to be converted to factors:
 - Original numeric variables corresponding to real quantitative concepts are kept as numeric but additional factors should also be created
-- Exploratory Data Analysis for each variable (numeric summary and graphic support) --> TRAIN SAMPLE ONLY!
+- Exploratory Data Analysis for each variable (numeric summary and graphic support) of the train sample.
 
 ### Variable *avganncount*
 
-*avganncount* is a numerical variable which expresses the "Mean number of reported cases of cancer diagnosed annually (2010-2015)". It has a median value of 175 and a range of 38143. The first and third quartiles show that the 25% of the values are lower or equal than 80, and the 75% of the values are lower or equal to 509, which is far away from the mean value of 623,2 and the maximum value of 38150. This characteristics indicate that the distribution is skewed.
+*avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." The difference between the mean (623.2) and the median (175) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (80 and 509, respectively) are much lower than the mean of 623.2 and the maximum value of 38.150, further suggesting skewness. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 273 outliers, and 224 of these are severe outliers.
 
-On the other hand, the boxplot visually confirms the skewness of the distribution. The whisker extending upwards and the large number of outliers above the upper quartile indicate a heavy right tail. This implies that while most of the average annual cancer case counts are relatively low, there are a few instances where the count is exceptionally high, potentially corresponding to large population centers or areas with higher cancer incidence rates.
+This implies that while most annual cancer case counts are relatively low, a few instances are exceptionally high, likely due to large population centers or higher cancer incidence rates. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation. This variable has no missing values. Lastly, the skeweness indicator and shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
 
 ```{r}
 
-summary <- summary(train$avganncount)
-range <- (summary[[6]] - summary[[1]])
-boxplot(train$avganncount)
-plot(density(train$avganncount))
+summary <- summary(train$avganncount); summary
+mm <- mean(train$avganncount)
+ss <- sd(train$avganncount)
+range <- (summary[[6]] - summary[[1]]); range
+boxplot(train$avganncount, main= "Boxplot")
+hist(train$avganncount,freq = F,30, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+skewness(train$avganncount)
+shapiro.test(train$avganncount)
+
+calculate_outliers(train$avganncount)
+
 
 ```
 
 ### Variable *avgdeathsperyear*
 
-*avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer". It has a range of 14007, with a min. value of 3 and a max. value of 14010. The quartiles indicate that the 25% of the values are less or equal than 29, the 50% are less or equal than 62, and the 75% are less or equal than 140,5. The mean is 191.6, which is greater than the 3rd quartile, thus indicating that the 25% of the population with higher values have much greater values than the median. 
-
-The boxplot again confirms the skewness of the distribution, showing a large number of outliers. This implies that while the most of the mean number reported mortalities due to cancer are low, some instances report exceptionally high values, potentially corresponding to large population centers or/and areas with higher cancer incidence rates.
+In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer". It has no missing values. The difference between the mean (191.6) and median (62) indicates that the distribution is not symmetric. Moreover, the first and third quartiles (29 and 140.5, respectivelly) are lower than the mean and the maximum value of 14010, further suggesting a skewed ditribution. With the help of graphical tools like the boxplot we can confirm the skeweness, seeing 225 outliers (138 of which are severe outliers), indicating a large right tail. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation, and the Shapiro test also consfirms the non-normality of the variable. 
 
 ```{r}
 
-variable <- train$avgdeathsperyear
-summary(variable)
-(summary(variable)[[6]] - summary(variable)[[1]])
-boxplot(variable)
-plot(density(variable))
+variable <- train$avgdeathsperyear;
+summary <- summary(variable)
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+boxplot(variable, main = "Boxplot")
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+skewness(variable)
+shapiro.test(variable)
+
+calculate_outliers(variable)
 
 ```
+
+### Variable *target_deathrate* :
+
+Variable *target_deathrate* is the target of the model. It contains no missing values in the train sample. The median (178.3) and mean (178.8) values are really close, expressing the symmetry of the distribution of the variable. Thanks to the boxplot and the histogram we can graphically confirm the symmetry of the distribution. 
+
+We performed the Shapiro test to check for the normality of the data, and obtained a small p-value that rejects the null hypothesis, indicating that the variable does not follow a normal distribution. Therefore, the target variable is not normally distributed. 
+
+Moreover, it contains 35 outliers, 1 of which is a severe outlier. 
+
+```{r}
+
+variable <- train$target_deathrate;
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+boxplot(variable, main = "Boxplot")
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+
+skewness(variable)
+shapiro.test(variable)
+
+calculate_outliers(variable)
+
+```
+
+### Variable *incidencerate* : 
+
+Variable *incidencerate* expresses "Mean per capita (100,000) cancer diagnoses". The variable has no missing values. It has similar mean (449) and median (453.5) values given its range. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
+
+```{r}
+
+variable <- train$incidencerate;
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+train[889,"geography"]
+train[168, "geography"]
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+
+skewness(variable)
+shapiro.test(variable)
+
+calculate_outliers(variable)
+
+```
+
 
 
 
