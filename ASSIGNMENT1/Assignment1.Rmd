@@ -78,7 +78,7 @@ In this section, a descriptive analysis is conducted on each variable, a data qu
 
 *avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." The difference between the mean (623.2) and the median (175) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (80 and 509, respectively) are much lower than the mean of 623.2 and the maximum value of 38.150, further suggesting skewness. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 273 outliers, and 224 of these are severe outliers.
 
-This implies that while most annual cancer case counts are relatively low, a few instances are exceptionally high, likely due to large population centers or higher cancer incidence rates. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation. This variable has no missing values. Lastly, the skeweness indicator and shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
+The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation. This variable has no missing values. Lastly, the skeweness indicator and Shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
 
 ```{r}
 
@@ -99,7 +99,7 @@ calculate_outliers(train$avganncount)
 
 ### Variable *avgdeathsperyear*
 
-In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer". It has no missing values. The difference between the mean (191.6) and median (62) indicates that the distribution is not symmetric. Moreover, the first and third quartiles (29 and 140.5, respectivelly) are lower than the mean and the maximum value of 14010, further suggesting a skewed ditribution. With the help of graphical tools like the boxplot we can confirm the skeweness, seeing 225 outliers (138 of which are severe outliers), indicating a large right tail. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation, and the Shapiro test also consfirms the non-normality of the variable. 
+In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer". It has no missing values. The difference between the mean (191.6) and median (62) indicates that the distribution is not symmetric. Moreover, the first and third quartiles (29 and 140.5, respectivelly) are lower than the mean and the maximum value of 14010, further suggesting a skewed ditribution. With the help of graphical tools like the boxplot we can confirm the skeweness, obtaining 225 outliers (138 of which are severe), indicating a large right tail. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation, and the Shapiro test also confirms the non-normality of the variable. 
 
 ```{r}
 
@@ -120,11 +120,11 @@ calculate_outliers(variable)
 
 ### Variable *target_deathrate* :
 
-Variable *target_deathrate* is the target of the model. It contains no missing values in the train sample. The median (178.3) and mean (178.8) values are really close, expressing the symmetry of the distribution of the variable. Thanks to the boxplot and the histogram we can graphically confirm the symmetry of the distribution. 
+Variable *target_deathrate* is a numerical variable that is the target of the model. It contains no missing values in the train sample. The median (178.3) and mean (178.8) values are really close, expressing the symmetry of the distribution of the variable. Thanks to the boxplot and the histogram we can graphically confirm the symmetry of the distribution. 
 
 We performed the Shapiro test to check for the normality of the data, and obtained a small p-value that rejects the null hypothesis, indicating that the variable does not follow a normal distribution. Therefore, the target variable is not normally distributed. 
 
-Moreover, it contains 35 outliers, 1 of which is a severe outlier. 
+Moreover, it contains 35 outliers, 1 of which is a severe.  
 
 ```{r}
 
@@ -147,7 +147,7 @@ calculate_outliers(variable)
 
 ### Variable *incidencerate* : 
 
-Variable *incidencerate* expresses "Mean per capita (100,000) cancer diagnoses". The variable has no missing values. It has similar mean (449) and median (453.5) values given its range. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
+Variable *incidencerate* is a numerical variable that expresses "Mean per capita (100,000) cancer diagnoses". The variable has no missing values. It has similar mean (449) and median (453.5) values given its range. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
 
 ```{r}
 
@@ -169,6 +169,129 @@ shapiro.test(variable)
 calculate_outliers(variable)
 
 ```
+
+### Variable *medincome* :
+
+Variable *medincome* is a numerical variable that expresses the "Median income per county". Thanks to the histogram, Shapiro test, and skeweness value, we see how the distribution is neither Normal nor symmetric, but it is skewed with a long right tail. It has 69 outliers, 15 of them severe. The highest value is for Loudoun County, Virginia. There are no missing values in this variable. 
+
+```{r}
+
+variable <- train$medincome;
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+train$geography[128] # Virginia
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+
+skewness(variable)
+shapiro.test(variable)
+calculate_outliers(variable)
+
+```
+
+### Variable *popest2015* :
+
+Variable *popest2015* is a numerical variable that expresses the population of the county. It does not count with missing values. It has a long range and is highly skewed, with a long right tail. In fact, it contains 252 outliers, 162 of which are severe, and all of them are above the upper whisker in the boxplot. The highest value is for Los Angeles County, California. 
+The large difference between the mean (106.841) and median (27.158), along with the spread between the 1st (12.191) and 3rd quartiles (66.880), indicates a positively skewed distribution, where extreme high values are pulling the mean upward.
+
+```{r}
+
+variable <- train$popest2015;
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+train$geography[600]
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+skewness(variable)
+shapiro.test(variable)
+calculate_outliers(variable)
+
+```
+
+
+
+### Variable *povertypercent* : 
+
+
+Variable *povertypercent* is a numerical variable that expresses the percent of population in poverty and has no missing values. Similarly to other variables, it has a skewed distribution with a larger right tail. It has 42 outliers, but none of them is severe.
+
+```{r}
+
+variable <- train$povertypercent;
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+skewness(variable)
+shapiro.test(variable)
+calculate_outliers(variable)
+
+```
+
+
+### Variable *studypercap* : I CONSIDER IT IS WORTH TO REMOVE
+
+
+Variable *studypercap* is a numerical variable that expresses "Per capita number of cancer-related clinical trials per county". It contains no missing values, and has 307 outliers (222 severe). Its distribution is non-symmetric. Note that 1162 out of 1831 observations contain value 0 in this variable, which indicates that it may only provide noise to the model. **Thus, we consider it is worth to remove the variable. **
+
+
+```{r}
+
+variable <- train$studypercap;
+summary <- summary(variable); summary
+length(variable[variable==0])
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+calculate_outliers(variable)
+
+```
+
+
+### Variable *binnedi* : I CONSIDER IT IS WORTH TO REMOVE
+
+
+Variable *binnedi* is a categorical variable (or factor) that expresses the median income per capita binned by decile.
+
+
+```{r}
+
+variable <- train$binnedinc;
+summary <- summary(variable); summary
+
+#table(variable)
+#prop.table(table(variable_name))
+#barplot(table(variable), main="Bar Plot of Variable", xlab="Categories", ylab="Frequency")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
