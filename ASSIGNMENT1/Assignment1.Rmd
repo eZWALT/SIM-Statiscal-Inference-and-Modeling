@@ -76,7 +76,7 @@ In this section, a descriptive analysis is conducted on each variable, a data qu
 
 ### Variable *avganncount*
 
-*avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." The difference between the mean (623.2) and the median (175) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (80 and 509, respectively) are much lower than the mean of 623.2 and the maximum value of 38.150, further suggesting skewness. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 273 outliers, and 224 of these are severe outliers.
+*avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." The difference between the mean (623.2) and the median (175) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (80 and 509, respectively) are much lower than the mean of 623.2 and the maximum value of 38150.0, further suggesting skewness. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 273 outliers, and 224 of these are severe outliers.
 
 The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation. This variable has no missing values. Lastly, the skeweness indicator and Shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
 
@@ -104,7 +104,7 @@ In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mea
 ```{r}
 
 variable <- train$avgdeathsperyear;
-summary <- summary(variable)
+summary <- summary(variable);summary
 mm <- mean(variable)
 ss <- sd(variable)
 range <- (summary[[6]] - summary[[1]]); range
@@ -147,7 +147,7 @@ calculate_outliers(variable)
 
 ### Variable *incidencerate* : 
 
-Variable *incidencerate* is a numerical variable that expresses "Mean per capita (100,000) cancer diagnoses". The variable has no missing values. It has similar mean (449) and median (453.5) values given its range. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
+Variable *incidencerate* is a numerical variable that expresses "Mean per capita (100,000) cancer diagnoses". The variable has no missing values. It has similar mean (449) and median (453.5) values given its range and suggesting a simmetry distribution. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
 
 ```{r}
 
@@ -221,7 +221,7 @@ calculate_outliers(variable)
 ### Variable *povertypercent* : 
 
 
-Variable *povertypercent* is a numerical variable that expresses the percent of population in poverty and has no missing values. Similarly to other variables, it has a skewed distribution with a larger right tail. It has 42 outliers, but none of them is severe.
+Variable *povertypercent* is a numerical variable that expresses the percent of population in poverty and has no missing values. Similarly to other variables, it has a skewed distribution with a larger right tail. It has 42 outliers, but none of them is severe. The p-value obtained in the shapiro_test confirms the rejection of the null hypothesis, concluding that the variable does not have a normal distribution. 
 
 ```{r}
 
@@ -267,21 +267,188 @@ calculate_outliers(variable)
 ### Variable *binnedi* : I CONSIDER IT IS WORTH TO REMOVE
 
 
-Variable *binnedi* is a categorical variable (or factor) that expresses the median income per capita binned by decile.
+Variable *binnedi* is a categorical variable (or factor) that expresses the median income per capita binned by decile. The variable 
+
+-- anna -- I'll remove the variable if we require precision or need the full detail of income differences but
+if we want to compare groups maybe is useful to keep it. 
 
 
 ```{r}
 
 variable <- train$binnedinc;
 summary <- summary(variable); summary
-
-#table(variable)
-#prop.table(table(variable_name))
-#barplot(table(variable), main="Bar Plot of Variable", xlab="Categories", ylab="Frequency")
-
+table(variable)
+prop.table(table(variable))
+barplot(table(variable), main="Bar Plot of Variable", xlab="Categories", ylab="Frequency")
 
 ```
 
+
+### Variable *medianage* :
+Medianage is a numerical variable that expresses the median age of county residents. The variable has no missing values. Observing its mean(45.25), the median (40.90) and the 3 Qu. (44.90) being lower than the mean suggest skewness. Has 65 outliers, 18 of which are severe outliers. The highest value is in "Iosco County, Michigan". After anylizing the boxplot, and the histogram along the Shapiro test and skeweness value we can discard the normality of the variable's distribution.
+
+
+```{r}
+variable <- train$medianage
+summary <- summary(variable) ; summary
+sum(is.nan(variable))
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+train$geography[193]
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+calculate_outliers(variable)
+shapiro.test(variable)
+
+```
+
+
+### Variable *medianagemale* :
+Numeric variable, represents the mean age of the male population of each county. There are no missing values and it has 46 outliers, non of them several outliers. The mean is 39.59 yo and the median 39.50yo what suggest a simmetry distribution. After looking at the results of the shapiro-test it doesn't have a normal distribution 
+
+```{r}
+variable <- train$medianagemale
+summary <- summary(variable) ; summary
+sum(is.nan(variable))
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+calculate_outliers(variable)
+shapiro.test(variable)
+
+```
+
+### Variable *medianagefemale* : I AM NOT SURE IF IT'S WORTH IT TO SEPARATE THE MEDIANAGE WITH SEX
+
+The medianagefemale is a numerical variable that analyze the median age of the females in each county. It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing the results of the Shapiro-test we observe that does not have a normal distribution. 
+
+-- comment --
+!! I think that something it's not right because the mean of males is 39.59 yo, the mean of females is 42,17 yo, therefore the mean of the medianage should be around 40,88 yo, but it's 45.25yo
+
+```{r}
+variable <- train$medianagefemale
+summary <- summary(variable) ; summary
+sum(is.nan(variable))
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+calculate_outliers(variable)
+shapiro.test(variable)
+```
+
+
+### Variable *geography* :
+Categorical variable that shows the name of each county. We can use this variable as a PK 
+
+--comment -- 
+Maybe we can separate the name of the state and create a new varible to be able to study the distribution around the United States 
+
+
+```{r}
+variable <- train$geography;
+summary <- summary(variable); summary
+table(variable)
+
+```
+
+### Variable *percentmarried* 
+Numerical variable that represent the percent of county residents who are married. It has a non-symmetric distribution, it is skewed with a long left tail observed in the histogram. It doesn't have missing values, it has 34 outliers (non of them severe) and they are concentrated on the lower end of the distribution. With the shapiro-test we can confirm the rejection of the null hypothesis, therefore it doesn't have a normal distribution.   
+
+
+```{r}
+variable <- train$percentmarried
+summary <- summary(variable) ; summary
+sum(is.nan(variable))
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+Boxplot(variable, main = "Boxplot")
+
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+calculate_outliers(variable)
+shapiro.test(variable)
+
+```
+
+### Variable *pctnohs18_24* 
+
+Numerical variable that show the percentage of county residents aged 18-24 whose highest level of education is less than a high school diploma. The distribution of this variable is skewed with a long right tail, we can confirm that it doesn't have a normal distribution thanks to the histogram and the curve. Moreover the p-value obtained in the shapiro-test confirm the non normal distribution. It doesn't have misssing values, and it has 35 outliers, 5 of them severe. 
+
+```{r}
+
+variable <- train$pctnohs18_24
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+
+Boxplot(variable, main="Boxplot")
+hist(variable , freq=F, 100, main="Histogram")
+curve(dnorm(x,mean=mm,sd=ss),col='red', lwd=2, add = T)
+
+calculate_outliers(variable)
+shapiro.test(variable)
+
+```
+
+### Variable *ppcths18_24* 
+Numeric variable, it represent the percentage of county residents ages 18-24 highest education attained is a high school diploma. We can observe with the median(34,7%) and the mean(35%) that the variable has a symmetric distribuition, but after the shapiro_test we observe that it doesn't have a normal distribution. It doesn't have missing values and it has 33 outliers, non of them severe. 
+```{r}
+variable <- train$pcths18_24
+
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+
+Boxplot(variable, main="Boxplot")
+hist(variable , freq=F, 100, main="Histogram")
+curve(dnorm(x,mean=mm,sd=ss),col='red', lwd=2, add = T)
+
+calculate_outliers(variable)
+shapiro.test(variable)
+
+```
+
+### Variable *pctsomecol18_24* NOT WORTH TO USE IT (75% MISSING VALUES)
+
+Numerical variable. Percent of county residents ages 18-24 highest education attained some college. It has 1375 missing values. (75%) therefore we would remove this variable. 
+
+
+```{r}
+variable <- train$pctsomecol18_24
+summary <- summary(variable); summary
+
+```
+
+### Variable pcths25_over*
+Numerical variable that express the percentage of county residents ages 25 and over highest education attained a high school diploma. It doesn't have missing values but it have 18 outliers, non of the severe. It doesn't have a normal distribution.
+```{r}
+variable <- train$pcths25_over
+summary <- summary(variable); summary
+mm <- mean(variable)
+ss <- sd(variable)
+
+Boxplot(variable, main="Boxplot")
+hist(variable , freq=F, 100, main="Histogram")
+curve(dnorm(x,mean=mm,sd=ss),col='red', lwd=2, add = T)
+
+calculate_outliers(variable)
+shapiro.test(variable)
+```
 
 
 
