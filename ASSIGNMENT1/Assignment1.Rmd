@@ -41,8 +41,8 @@ calculate_outliers <- function(data) {
   num_outliers <- length(outliers)
 
   # Calculate the lower and upper bounds for severe outliers
-  Q1 <- quantile(data, 0.25)
-  Q3 <- quantile(data, 0.75)
+  Q1 <- quantile(data, 0.25, na.rm = TRUE)
+  Q3 <- quantile(data, 0.75, na.rm = TRUE)
   IQR <- Q3 - Q1
 
   lower_severe_bound <- Q1 - 3 * IQR
@@ -80,8 +80,31 @@ In this section, a descriptive analysis is conducted on each variable, a data qu
 
 The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation. This variable has no missing values. Lastly, the skeweness indicator and Shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
 
-```{r}
+-- anna -- 
+In this variable there are 126  values = "1962.667684" we should consider these as NA 
 
+```{r}
+summary <- summary(variable); summary
+variable <- train$avganncount
+
+variable[variable == 453.5494221] <- NA
+summary <- summary(variable); summary
+
+mm <- mean(variable)
+ss <- sd(variable)
+range <- (summary[[6]] - summary[[1]]); range
+boxplot(variable, main = "Boxplot")
+hist(variable,freq = F,100, main = "Histogram")
+curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+
+shapiro.test(variable)
+
+calculate_outliers(variable)
+```
+
+
+```{r}
+variable <- train$avganncount
 summary <- summary(train$avganncount); summary
 mm <- mean(train$avganncount)
 ss <- sd(train$avganncount)
@@ -149,10 +172,17 @@ calculate_outliers(variable)
 
 Variable *incidencerate* is a numerical variable that expresses "Mean per capita (100,000) cancer diagnoses". The variable has no missing values. It has similar mean (449) and median (453.5) values given its range and suggesting a simmetry distribution. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
 
+-- anna -- 
+In this variable there are 126  values = "453.5494221" we should consider these as NA (same rows as avganncount variable) 
+
 ```{r}
 
 variable <- train$incidencerate;
 summary <- summary(variable); summary
+
+variable[variable == 453.5494221] <- NA
+summary <- summary(variable); summary 
+
 mm <- mean(variable)
 ss <- sd(variable)
 range <- (summary[[6]] - summary[[1]]); range
@@ -285,20 +315,23 @@ barplot(table(variable), main="Bar Plot of Variable", xlab="Categories", ylab="F
 
 
 ### Variable *medianage* :
-Medianage is a numerical variable that expresses the median age of county residents. The variable has no missing values. Observing its mean(45.25), the median (40.90) and the 3 Qu. (44.90) being lower than the mean suggest skewness. Has 65 outliers, 18 of which are severe outliers. The highest value is in "Iosco County, Michigan". After anylizing the boxplot, and the histogram along the Shapiro test and skeweness value we can discard the normality of the variable's distribution.
+Medianage is a numerical variable that expresses the median age of county residents. The variable has no missing values. Has 65 outliers, 18 of which are severe outliers. All of these outliers should be removed because it's impossible to be more than 100 years. Once we removed all the incorrect values we get 52 outliers, 18 of then severe. Finally we observe a symmetric distribution with a median = 40.90 and a mean=40.85. After analyzing the boxplot, and the histogram along the Shapiro test we can discard the normality of the variable's distribution.
 
 
 ```{r}
 variable <- train$medianage
 summary <- summary(variable) ; summary
-sum(is.nan(variable))
+calculate_outliers(variable)
+variable[variable > 80] <- NA  # Replace values greater than 80 with NA
+summary <- summary(variable) ; summary
+
 mm <- mean(variable)
 ss <- sd(variable)
 range <- (summary[[6]] - summary[[1]]); range
 Boxplot(variable, main = "Boxplot")
-train$geography[193]
+
 hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+curve(dnorm(x, mean = mm, sd = ss) ,col="red", lwd = 2, add=T)
 
 calculate_outliers(variable)
 shapiro.test(variable)
@@ -330,8 +363,7 @@ shapiro.test(variable)
 
 The medianagefemale is a numerical variable that analyze the median age of the females in each county. It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing the results of the Shapiro-test we observe that does not have a normal distribution. 
 
--- comment --
-!! I think that something it's not right because the mean of males is 39.59 yo, the mean of females is 42,17 yo, therefore the mean of the medianage should be around 40,88 yo, but it's 45.25yo
+
 
 ```{r}
 variable <- train$medianagefemale
