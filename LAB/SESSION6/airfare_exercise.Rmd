@@ -1,0 +1,205 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+---
+title: "airfare_exercise"
+author: "Walter J.T.V"
+date: "`r Sys.Date()`"
+output: html_document
+--
+
+# Introduction
+
+```{r}
+
+library(moments)
+library(corrplot)
+
+
+load("01- Airfare-raw.RData")
+summary(air)
+
+#Take the subset of data of year 2020 
+df <- air[air$year == 2000, ]
+
+names(df)
+
+```
+
+# Solution
+## 1. Determine if the response variable (fare) has an acceptably normal distribution.
+
+It is not normal (Skwed data and fails 2 tests)
+
+```{r}
+
+mm <- mean(df$fare)
+ss <- sd(df$fare)
+
+mm;ss
+
+?hist
+hist(df$fare, col="purple",freq=F,30, main="Histogram of Fare")
+curve(dnorm(x, mean=mm, sd=ss), add=T, lwd=2, col="blue")
+
+#Using a shapiro test to assess if the distribution is Normal
+# Conclusion: we reject that is normal
+shapiro.test(df$fare)
+
+#using a kolmogorov test 
+#ks.test(df$fare, pnorm())
+
+# Looking at the skewness of the data we can asses if its not normal
+?skewness
+skewness(df$fare)
+```
+
+## 2. Value the descriptive statistics of the variables fare (fare), market share of the largest operator (bmktshr), distance (dist) and number of daily passengers (passen).
+
+```{r}
+
+df1 <- df[, c("fare", "dist", "passen", "concen")]
+summary(df1)
+
+```
+
+## 3. Indicate by exploration of the data which are apparently the variables most associated with the response variable (use only the indicated variables).
+
+Looking at correlation matrices we see that Fare ~ Dist are related and also Dist ~ Concen a bit. 
+
+```{r}
+
+#Lets use spearman correlation given that Pearson one is not suitable for NON-NORMAL distributions (Any kind)
+corr_matrix <- cor(df1, method="spearman")
+corr_matrix
+
+plot(df1)
+
+corrplot(corr_matrix)
+
+#If we maunally to test if R = 0
+cor.test(df$fare, df$passen, method="spearman")
+```
+
+## 4. Define a polyeconomic factor f.concen for the covariate of the market share of the main operator (concen) according to its quartiles and argue if the average rate depends on the level of concentration of the path. Statistically justify the answer.
+
+
+```{r}
+
+#Convert numeric to factors
+?cut
+#This is not correct because it doesnt follow quantiles
+#df$f.concen <- cut(df$concen, breaks=c(0, 0.2, 0.4, 0.6, 0.8, 1), include.lowest=T)
+df$f.concen <- cut(df$concen, breaks=quantile(df$concen), include.lowest=T)
+summary(df$f.concen)
+```
+
+## 5. Calculate and interpret the anova model of a route that explains the rate according to the concentration factor of the main operator (concentration factor created in point 4).
+
+Not all means are the same as seen in the oneway ANOVA test. Given that it feels we dig deeper doing pairwise tests with WILCOX (non-parametric given that FARE is not normally distributed). We clearly see that all of them are different (We reject the equality H0 that both means are equal) except for the 2nd bin and the 3rd bin of the categorical variable f.concen.
+
+```{r}
+
+tapply(df$fare, df$f.concen, summary)
+boxplot(df$fare ~ df$f.concen)
+
+# If Y normally distributed then :
+# HO: all means in the group are the same
+oneway.test(df$fare ~ df$f.concen)
+
+# Given that Y is not normally distributed this test will perform better
+# H0: all means in the group are the same
+kruskal.test(df$fare ~ df$f.concen)
+
+# We get more insights doing pariwise after seeing that ANOVA failed
+pairwise.wilcox.test(df$fare, df$f.concen)
+
+
+
+```
+
+## 6. Do you think that the variability of the fare depends on the degree of monopoly that is operated on the route?
+
+H0: var(group1) = ... = var(group4)
+
+Seeing that the p-value for the Fligner (ANOVA) test returns a 0.01, we reject the Null hypothesis that all the variances are equal. Then we need to perform 
+```{r}
+
+tapply(df$fare, df$f.concen, var)
+fligner.test(df$fare ~ df$f.concen)
+
+#pairwise.var.test(df$fare, df$f.concen)
+
+```
+
+## 7. Calculate the linear regression model that explains the fare from the distance of the path: interpret the regression line and assess its quality.
+
+```{r}
+
+dist_model <- lm(fare ~ dist, data=df)
+summary(dist_model)
+#plot(dist_model)
+```
+
+## 8. What is the percentage of the rate variability that is explained by the length of the air route?
+
+This model interprets 35% of the variability of the data 
+
+```{r}
+
+```
+
+## 9. Do you think it is necessary to introduce a quadratic term in the equation that relates the fare to the length of the air route?
+
+```{r}
+
+
+
+```
+
+## 10. After controlling for the length of the path, indicate whether the additive effect of the monopoly factor on the route is statistically significant.
+
+Looking at the ANOVA p-value, we reject that both models are the same.  
+
+HO: both models do the same shit
+HA: they do not make the same shit
+
+conclusion: they do not do the same shit
+
+```{r}
+
+fconcen_model <- lm(fare ~ dist + f.concen, data=df)
+summary(fconcen_model)
+
+library(car)
+#When using categorical factors each category gets a estimate beta value
+scatterplot(fare ~ dist | f.concen, data=df, smooth=F)
+
+#We need to do an anova test to test out if this addition of f.concen is significantly better
+# This is a Fisher TEST
+anova(dist_model, fconcen_model)
+
+```
+
+## 11. Indicate whether the relationship between the air fare and the length of the route depends on the monopoly factor on the route? Calculate the models involved, make the appropriate hypothesis tests and interpret them statistically.
+
+```{r}
+
+```
+## 12. Select the best model available so far. Interpret the equations that relate the explanatory variables to the answer (rate).
+
+```{r}
+
+```
+## 13. Study the model that relates the logarithm of the rate to the linear and quadratic terms of the logarithm of distance.
+
+```{r}
+
+```
+## 14. Graphically assess the models obtained in Point 9 and in Point 13.
+
+```{r}
+
+```

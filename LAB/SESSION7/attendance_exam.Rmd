@@ -1,0 +1,285 @@
+---
+title: "my_solution"
+author: "Walter J.T.V"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Partial 2023-24 Q1
+
+## Description
+
+Numeric target --> stndfnl
+Qualitative target --> frosh
+
+Prepare factors:
+```{r}
+load("attendraw.RData")
+library(car)
+library(FactoMineR)
+library(EnvStats)
+library(missMDA)
+library(chemometrics)
+library(mice)
+library(mvoutlier)
+library(corrplot)
+
+
+
+df$frosh <- factor(df$frosh, labels=c("Fresh-No", "Fresh-Yes"))
+df$soph <- factor(df$soph, labels=c("Sopho-No", "Sopho-Yes"))
+df$type <- factor((10 * (as.numeric(df$soph) - 1) + (as.numeric(df$frosh) - 1)), levels=c(0, 1, 10), labels=c("None", "Freshman", "Sophomore"))
+
+summary(df)
+
+```
+
+**1.	Determine thresholds for mild and severe outliers for the target. Are there any outliers? Indicate observation id’s and atypical values. *Do not take any action*.**
+```{r}
+boxplot(df$stndfnl, color="Red")
+Q1 <- quantile(df$stndfnl, probs=0.25)
+Q3 <- quantile(df$stndfnl, probs=0.75)
+IQR <- Q3 - Q1 
+
+upmild <- Q3 + 1.5*IQR
+upextrm <- Q3 + 3*IQR
+
+botmild <- Q1 - 1.5*IQR
+botextrm <- Q1 - 3*IQR
+
+mild_ids <- which( ((df$stndfnl > upmild) & (df$stndfnl < upextrm)) | ((df$stndfnl < botmild) & (df$stndfnl > botextrm )))
+extrm_ids <- which((df$stndfnl > upextrm) |  (df$stndfnl < botextrm ))
+
+mild_outliers <- df[mild_ids, ]
+extrm_outliers <- df[extrm_ids,]
+```
+
+**2. Use an imputation method to address missing data in the dataset. Validate imputation results.**
+
+The only variable that contain's missing values is hwrte, therefore we will apply imputation using the mice library.
+
+Looking at their quantiles we can see that the imputed values do not modify the distribution of the original variable, the quantiles are actually the same.
+
+```{r}
+miss_ids <- which(is.na(df$hwrte))
+numeric_cols = c("attend", "termgpa", "priGPA", "ACT", "final", "atndrte", "hwrte", "skipped", "stndfnl")
+res.impca <- imputePCA(df[, numeric_cols])
+df_imp <- res.impca$completeObs
+
+#Validation through quantiles
+quantile(df$hwrte, prob=seq(0.1, by=0.1), na.rm=T)
+quantile(df_imp[, "hwrte"], prob=seq(0.1, by=0.1))
+
+
+df$hwrte[miss_ids] <- df_imp[miss_ids, "hwrte"]
+quantile(df$hwrte, prob=seq(0.1, by=0.1))
+```
+
+**3. Are there any multivariate outliers in the dataset? Indicate how many and which at 99% confidence. Explain what they seem to share in common. Do not take any action.**
+
+To locate such multivariate outliers we will make use of the chemometrics::Moutlier function that will asses with a 99% confidence interval the posible outliers. 
+
+Firstly we need to gather a set of variables that aren't correlated. Looking at the map we can see that attend, atndrte, skipped have a perfect correlation of 1 (Positively and negatively respectively). Also final has a 1 positive correlation with stndfnl given that also in this case that variable is derived.
+
+Looking at the Classic vs Robust plot we can asses that over 19 observations are multivariate outliers. To asses what they share in common we can analyse it through factomineR catdes. It is obvious that skipped, attend and atndrte are the most globally associated variables. The multivariate outliers have a significant superior skipped mean value, and a suprising lower mean attend/atndre. Also we can see a massive dip in mean hwrte from 88 (No outliers), to 50 and a lower mean GPA too. 
+
+
+
+```{r}
+corr_map <- cor(df[, sapply(df, is.numeric)])
+corrplot(corr_map)
+
+res_outliers <- Moutlier(df[, c(2,3,4,5,6)], quantile=0.99)
+#This plot is not needed actually
+plot(res_outliers$md, res_outliers$rd, main="Mahalanobis distance Classic vs Robust")
+abline(h=res_outliers$cutoff, col="red")
+abline(v=res_outliers$cutoff, col="blue")
+
+mv_outliers <- which((res_outliers$md > res_outliers$cutoff) & (res_outliers$md > res_outliers$cutoff))
+mv_outliers
+
+df$mvout <- 0
+df[mv_outliers, "mvout"] <- 1
+df$mvout <- factor(df$mvout, labels=c("MV_outlier:No", "MV_outlier:Yes"))
+
+res_cat <- catdes(df, num.var=13)
+res_cat$quanti.var
+res_cat$quanti
+res_cat$test.chi2
+
+
+tapply(df$stndfnl,df$mvout,summary)
+```
+
+
+**4. Analyze the profile of the numeric target (stndfnl) using a suitable profiling method. A detailed explanation of the procedure outcome is requested.**
+
+Looking at the qualitative variables we can clearly see that there's a perfect positive correlation between stndfnl and final (Given that one is derived from the other...), but also that there is a quite high correlation with termGPA (0.5) and some more in PriGPA and ACT (0.36). There is also a weak inverse correlation with skipped (-0.14).
+
+In the other hand looking at qualitative variables we can see that Freshmans have a global association with the stndfnl, having -0.155 less mean than the rest.
+
+
+```{r}
+prof_stndfnl <- condes(df, which(names(df) == "stndfnl"))
+
+#Category talks about categorical variables related like frosh or type MEEEEAN
+prof_stndfnl$category
+
+prof_stndfnl$quali
+
+prof_stndfnl$quanti
+```
+
+
+
+**5. Analyze the profile of the binary target (frosh) using a suitable method. A detailed explanation of the procedure outcome is requested.**
+
+Firsly looking at quantitative variables we can clearly see that freshman have a slightly better mean values for hwrte, termgpa, ACT and PriGPA with similar standard deviations. 
+
+Secondly, looking at the chi2 test we can also see that the soph variable is globally related to frosh.
+
+Thirdly, we see looking at the category column that sophomore and freshmans are mutually exclusive, and there is a slightly bigger number of sophomores (57%)
+
+Lastly, looking at $quanti.var we can see that this variable is related to PriGPA, ACT and termgpa significantly. 
+
+
+
+```{r}
+
+prof_frosh <- catdes(df, which(names(df) == "frosh"))
+
+prof_frosh$test.chi2
+
+prof_frosh$category
+
+prof_frosh$quanti.var
+
+prof_frosh$quanti
+```
+
+
+**6. Is there variance homogeneity in the stndfnl target groups defined by frosh and soph classes, one by one and when applied simultaneously? Hint: You have to define a new factor.**
+
+Given that the p-value is less than 0.05, and through visuals, we reject that stndfnl follows a normal distribution, therefore we need a non-parametric test of variances such as Levene or pairwise fligner tests.
+
+Given the results of both the levene test and the individual fligner tests we assess that we cannot reject the null hyphotesis
+
+
+```{r}
+
+mm <- mean(df$stndfnl); mm
+ss <- sd(df$stndfnl); ss 
+
+
+#Remove frequency for using density instead
+hist(df$stndfnl, main="Histogram of STNDFNL", 10, freq=F)
+curve(dnorm(x, mean=mm, sd=ss), add=T, lwd=2, col="red")
+shapiro.test(df$stndfnl)
+
+leveneTest(stndfnl ~ type, data=df)
+#given a big p value we compute pairwise fligner tests
+
+fligner.test(stndfnl ~ frosh, data=df)
+fligner.test(stndfnl ~ soph, data=df)
+#WHAT THE ACTUAL FUCK MORE THAN 2 GROUPS?=?=¿??¿¿
+fligner.test(stndfnl ~ type, data=df)
+
+
+```
+
+
+**7.	Mean stndfnl target can be considered to be the equal across groups defined by frosh target? Use a two.sided test at 1% significance level and indicate the confidence interval for freshman target population mean. Indicate whether equal variances and normal distribution of stndfnl hypothesis hold in the population.**
+
+As we saw previously, the stndfnl variable is not normally distributed, therefore we need to use a non-parametric test such as a wilcox.test. We cannot reject the null hypothesis with a 99% of confidence.
+```{r}
+?wilcox.test
+wilcox.test(stndfnl ~ frosh, data=df, alterantive = "two.sided", conf.level=0.99)
+```
+
+**8.	State and test one.sided hypothesis to assess whether stndfnl is less for freshman than the rest at 1% significance level. Indicate and justify a 95% confidence interval for freshman target population mean.**
+
+We know that the sample mean of freshman-yes == -0.12 and freshman-no == 0.077
+
+
+The null hypothesis with 2 populations is that H0: MU_nofresh = MU_fresh, therefore we want to obtain a one sided HA: MU_nofresh > MU_fresh, therefore we will use greater. Doing a 99% significance wilcox test we get a small pvalue but not enough to safely reject the null hypothesis.
+
+Then we do a second test where H0: MU_fresh = 0, HA: MU_fresh > 0
+The confidence interval we get is (-0.26, inf)
+
+
+```{r}
+#Sample mean
+fresh <- which(df$frosh == "Fresh-Yes"); mean(df$stndfnl[fresh])
+no <- which(df$frosh == "Fresh-No"); mean(df$stndfnl[no])
+neither <- which(df$type == "None"); mean(df$stndfnl[neither])
+
+wilcox.test(stndfnl ~ frosh, data=df, alternative="greater", conf.level=0.99)
+wilcox.test(df$stndfnl[fresh], data=df, alternative="greater", conf.level=0.95, conf.int=T)
+
+```
+
+
+**9.	The standard deviation of stndfnl in the freshman group should not exceed 1. For the sample in the freshman group in your dataset, calculate the deviation of stndfnl assuming that normal assumption holds. State and include any assumptions needed to test at the 1% significance level whether population standard deviation is larger than 1 in the freshman group. Figure out the 99% upper threshold for stndfnl in the freshman population standard deviation.**
+
+Assuming normality we can use a varTest, which is a one-sample chisq test on variance, we will use the following hyphtesis:
+
+H0: Var(FRESH) = 1
+HA: Var(FRESH) > 1
+
+The pvalue indicates that we cannot reject the H0, The CI is (0.6381, inf) for the variance and (0.799, inf) talking about deviations. Using the contrary alternative hypothesis, we cannot reject at all the null hypothesis and get an upperbound (0, 1.08) variances, but (0, 1.03) talkinga bout standard deviations
+```{r}
+
+sd(df$stndfnl[fresh])
+sd(df$stndfnl[no])
+
+var(df$stndfnl[fresh])
+var(df$stndfnl[no])
+
+
+?varTest
+varTest(df$stndfnl[fresh], sigma.squared=1, conf.level=0.99, alternative="greater")
+
+varTest(df$stndfnl[fresh], sigma.squared=1, conf.level=0.99, alternative="less")
+
+
+
+sqrt(0.6381)
+sqrt(1.08)
+```
+
+
+**10.	Determine a 99% confidence interval for the population proportion of neither freshman, nor sophomore. Test the null hypothesis that selecting a unit neither freshman, nor sophomore has a population probability greater than 0.25.**
+
+Firstly we get the proportion table to see how many Neithers there exists, and lets test if the true population proportion of "Neither" is 0.25. The p-value is HUGE in the following case so we cannot reject.
+HO: Prop(Neither) = 0.25
+HA: Prop(Neither) > 0.25
+
+We get an interval such as CI € (0.155, 0.232) with 99% confidence.
+
+However, for a one-sided less test we get a small pvalue which makes us reject the null hypothesis, therefore its very likely that the true population proportion is less than 0.25
+```{r}
+table(df$type)
+prop.table(table(df$type))
+
+?prop.test
+#There are 130 dudes out of 680 that obey this condition
+prop.test(conf.level=0.99, x=130, n=680, alternative="two.sided", correct=F)
+prop.test(conf.level=0.99, x=130, n=680,p=0.25, alternative="greater", correct=F)
+prop.test(conf.level=0.99, x=130, n=680,p=0.25, alternative="less", correct=F)
+
+```
+
+**11.	Test the null hypothesis that the proportion of freshman group and the population proportion of neither freshman, nor sophomore is the same at 1% significance level.**
+
+This will require a two population prop.test with the following hypothesis:
+
+H0: prop(neither) = prop(fresh)
+HA: neq
+
+Given the p-value we cannot reject the null hyphotesis, we cannot tell if they are different.
+
+
+```{r}
+table(df$type)
+prop.test(x=c(130, 158), n=c(680, 680), conf.level=0.99,correct=F)
+```

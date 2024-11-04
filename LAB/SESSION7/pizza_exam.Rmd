@@ -1,0 +1,319 @@
+---
+title: "MDS-SIM-Partial_21-22Q1: Template for solutions to questions"
+author: "Your Name and ID Number"
+date: "November 8th, 2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+# Data Description
+
+Available variables:
+
+Nutrient analysis of pizzas (from https://data.world/sdhilip/pizza-datasets). Who likes pizza? I mean, there are so many things to like, let’s take a closer look! The data set pizza. Pizza.RData contains measurements that capture the kind of things that make a pizza tasty. Can you determine which pizza brand works best for you and explain why? The variables in the data set are:
+
+  -   brand: Pizza brand (class label)
+  -   id: Sample analysed
+  -   mois: Amount of water per 100 grams in the sample
+  -   prot: Amount of protein per 100 grams in the sample
+  -   fat: Amount of fat per 100 grams in the sample
+  -   ash: Amount of ash per 100 grams in the sample
+  -   sodium: Amount of sodium per 100 grams in the sample
+  -   carb: Amount of carbohydrates per 100 grams in the sample
+  -   cal: Amount of calories per 100 grams in the sample
+
+
+# List of Questions
+
+**Firstly, load dataset and check available variables.**
+
+```{r, include=FALSE, echo=FALSE}
+# Load Required Packages: to be increased over the course
+library(chemometrics)
+library(EnvStats)
+library(car)
+library(missMDA)
+
+options(contrasts=c("contr.treatment","contr.treatment"))
+
+```
+
+
+```{r}
+# Clear plots
+if(!is.null(dev.list())) dev.off()
+# Clean workspace
+rm(list=ls())
+
+load("Pizza.RData")
+summary(df)
+```
+
+**The amount of calories per 100 grams is selected as the numeric target. In the past, a lognormal distribution was accepted as the reference distribution.**
+
+**1.	Determine whether serial correlation is present on dataset or not.**
+
+No there isn't another lagged variable to check against, therefore the is no serial corrleation. However, we could achieve this using acf()
+
+
+
+```{r}
+length(unique(df$id))
+length(df$id)
+numeric_cols <- c("mois", "prot", "fat", "ash", "sodium", "carb", "cal", "ingredients")
+categ_cols <- c("brand")
+```
+
+**2.	Define a new variable containing the total amount of ingredients (water, protein, fat, ash and carbohydrates). Check consistency.**
+
+292 out of 300 observations are consistent, the rest have slight deviations +/- 1.
+
+```{r}
+df$ingredients <- NULL
+ingredient_cols <- c("mois", "prot", "fat", "ash", "carb")
+df$ingredients <- df[, "mois"] + df[, "prot"] + df[, "fat"] + df[, "ash"] + df[, "carb"]
+
+which(df$ingredients != 100)
+
+table(df$ingredients)
+```
+
+**3.	Univariant severe outliers are also present in some variables. Determine them. **
+
+Looking at the boxplots we can already see that there is at least 3 variables with outliers, fat, sodium and cal. Focusing our anlysis on those
+```{r}
+?boxplot
+boxplot(df[, numeric_cols], col=rainbow(7))
+
+summary(df$fat)
+fat_iqr <- quantile(df$fat, 0.75) - quantile(df$fat, 0.25)
+fat_up <- quantile(df$fat, 0.75) + fat_iqr * 3
+fat_bot <- quantile(df$fat, 0.25) - fat_iqr * 3
+fat_ids <- which((df$fat > fat_up) | (df$fat < fat_bot))
+
+sod_iqr <- quantile(df$sodium, 0.75) - quantile(df$sodium, 0.25)
+sod_up <- quantile(df$sodium, 0.75) + sod_iqr * 3
+sod_bot <- quantile(df$sodium, 0.25) - sod_iqr * 3
+sod_ids <- which((df$sodium > sod_up) | (df$sodium < sod_bot))
+
+cal_iqr <- quantile(df$cal, 0.75) - quantile(df$cal, 0.25)
+cal_up <- quantile(df$cal, 0.75) + cal_iqr*3
+cal_bot <- quantile(df$cal, 0.25) - cal_iqr*3
+cal_ids <- which((df$cal > cal_up) | (df$cal < cal_bot))
+
+boxplot(df[, c("fat", "sodium", "cal")])
+abline(h=fat_up, col="red")
+abline(h=fat_bot, col="red")
+abline(h=sod_up, col="purple")
+abline(h=sod_bot, col="purple")
+abline(h=cal_up, col="green")
+abline(h=cal_bot, col="green")
+
+uni_ids <- c(cal_ids, sod_ids, fat_ids)
+uni_ids
+
+```
+
+**4.	Are there multivariant outliers? Find them. Try to explain their singularity. Multivariant outliers,if present, are not going to be treated in this exercise: keep them as suplementary observations in the rest of the exercise. Which is the cut-off at 99.9% CI?**
+
+There are 4 outliers, and the main thing that differentiates them and the rest of observations is that the outliers have a higher mean and median of proteins than the rest,and have slightly less mean ash. 
+
+```{r}
+
+?Moutlier
+res_mout <- Moutlier(df[, 4:9], quantile=0.999)
+
+multi_ids <- which((res_mout$md > res_mout$cutoff ) & (res_mout$rd > res_mout$cutoff)
+plot(res_mout$md, res_mout$rd, main="Classic Manhattan vs Robustified distance")
+abline(h=res_mout$cutoff, col="red")
+abline(v=res_mout$cutoff, col="red")
+
+outliers <- df[multi_ids, 4:9]
+df[multi_ids] <- NULL
+
+summary(df)
+
+#Comparison of outliers to all data
+summary(outliers)
+summary(df[, 4:9])
+
+res_mout$cutoff
+```
+
+**5.	Indicate by using exploratory data analysis tools which are apparently the most associated variables with the numeric response variable (only the contributing variables to the ingredients are to be taken as active variables). Use also FactoMineR profiling tools at 99% significance level.**
+
+Firstly, delving into quantitative variables we can see that there is a huge positive correlation of fat and sodium, and some with ash, but also there is a quite big negative correlation with moisture. Therefore fatty and salty pizzas will have more calories than moisty ones.
+
+Secondly, brand has a huge global association with the "cal" variable, with an R² value up to 0.92, thus the number of calories of a pizza is heavily influenced by the brand.
+
+Lastly, taking a deeper look into the categories, we see that the brand A has a astonishing 1.5 points over the overall mean, making this the more calorie dense brand of them all while brand I, is -0.89 units below the overall mean making this brand the least calorically dense in average.
+
+
+```{r}
+library(FactoMineR)
+subset <- df[, c(1, 3:9)]
+res_cal <- condes(subset, num.var=8, proba=0.01)
+
+
+res_cal$quanti
+res_cal$quali
+res_cal$category
+
+summary(df$cal)
+```
+
+**6.	Use brand target factor and determine the most rellevant global associations at 99% CI. Profile A and I brands.**
+
+The most global associations by far are carb, prot, mois, sodium, ash, cal and fat.
+
+- Brand A,we can see that it has way more sodium, fat, ash and protein than the overall average, despite having a lower moisture and almost no carbs. Another interesting thing about brand A is that the deviation on variables is smaller than the overall sd.
+
+- Brand B has a more balanced compositions, with above average fats and more improtantly moisture, while carbs are seriously under the mean.
+
+- Brand C has greatly above average protein, moisture and ash, while having a smaller mean calories and carbs composition.
+
+SO ON
+
+- Brand I has the most moisture and has a below average profile of sodium, fat and calories.
+
+
+
+```{r}
+
+res_br <- catdes(subset, num.var=1, proba=0.01)
+
+res_br$quanti
+res_br$quanti.var
+```
+
+
+**7.	Say a few words about the hypothetical distribution that was assumed in the past. Use graphical and inferential arguments.**
+
+It its stated that the logarithm of cal is normal, but either looking at its distribution function compared to the density function of norm or looking at the results of the shapiro tests, we reject that neither calories or its logarithm has any kind of normal distribution
+
+```{r}
+
+hist(df$cal, freq=F, 20)
+curve(dnorm(x, mean(df$cal), sd(df$cal)), add=T, lwd=2, col="red")
+
+hist(log(df$cal), freq=F,20)
+curve(dnorm(x, mean(log(df$cal)), sd(log(df$cal))), add=T, lwd=2, col="red")
+
+shapiro.test(df$cal)
+shapiro.test(log(df$cal))
+
+
+```
+
+**8.	Let us focus on cal variate dispersion behavior according to the brand. Use numeric, graphics and inferential tools to address the topic.**
+
+To address the calorie dispersion behaviour according to the brand we can perform several actions. (Bear in mind that cal variable is not normal)
+
+1. Boxplot visual insights: we see that E or F has a lot of dispersion but other brands like I, J have really low dispersion
+
+2. Levene and Fligner tests: both have a small p-value, therefore with 5% significance we reject the hypothesis that variances across groups are equal or similar.
+
+```{r}
+tapply(df$cal, df$brand, sd)
+tapply(df$cal, df$brand, var)
+
+leveneTest(df$cal, df$brand)
+fligner.test(df$cal, df$brand)
+
+Boxplot(df$cal ~ df$brand, color="red")
+```
+
+**9.	Let us focus on cal variate mean behavior according to the brand. Use numeric, graphics and inferential tools to address whether the mean of the target depends on the brand or not.**
+
+Assuming the distribution is not normal we can perform mainly 2 actions to assess this:
+
+1. Boxplot visual insights: A is way over the mean and I is way below the overall mean.
+
+2. group mean testing: through the kruskal test we clearly reject the hypothesis that the means of every individual in the group are equal, then performing pairwise wilcox tests, we see that almost all groups equal mean hypothesis can be rejected except for (C,J) and (E,B), which looking at its mean values are really close.
+
+```{r}
+tapply(df$cal, df$brand, mean)
+
+kruskal.test(cal ~ brand, data=df)
+pairwise.wilcox.test(df$cal, df$brand)
+
+Boxplot(df$cal ~ df$brand, color="red")
+```
+
+**10.	 Continuing with the former question, on the positive case which brands show a remarkable difference in mean behavior among them. Use one-sided tests.**
+
+From using pairwise wilcox tests we see that I is less than every other single brand.
+Using greater than tests we see that we cannot reject that any other brand is bigger than A.
+... This is too long and boring look it up urself
+```{r}
+
+pairwise.wilcox.test(df$cal, df$brand, alternative="less")
+pairwise.wilcox.test(df$cal, df$brand, alternative="greater")
+
+```
+
+**11.	The standard deviation of the number of calories for brand A should not exceed 0.15cal. For the simple random sample in your dataset, calculate the deviation of calories for 100g assuming a normal distribution for 100 g calories. Stating any assumptions, you need (write them), test at the 1% level the null hypothesis that the population standard deviation is not larger than 0.15cal against the alternative that it is.**
+
+Assuming that we have a normal distribution and the following hypothesis:
+H0: sd(cal) = 0.15
+HA: sd(cal) > 0.15
+
+we get a small p-value enough to reject H0 and Accept HA, therefore the true population standard deviation of brand A is highly likely to be above 0.15
+
+```{r}
+tapply(df$cal, df$brand, sd)
+table(df$brand)
+
+cal_a <- df$cal[df$brand == "A"]
+varTest(cal_a, sigma.squared=0.15^2, alternative="greater", conf.level=0.99)
+
+```
+
+
+**12.	Figure out the 99% upper threshold for the number of calories for brand A population variance. Normal distribution for calories is assumed to hold.**
+
+The variance upper threshold is 0.05526 and the deviation threshold is 0.235 with a 99 of confidence.
+
+```{r}
+varTest(cal_a, sigma.squared=0.15^2, alternative="less", conf.level=0.99)
+sqrt(0.05526714)
+```
+
+**13. Build a 99% confidence interval for the difference in the mean of 100 g calories between brands A and C. Assume that equal variances in the population calories per brand does not hold.**
+
+We can still use parametric tests like t.test due to the assumption of normality
+```{r}
+cal_c <- df$cal[df$brand == "C"]
+
+?t.test
+t.test(cal_a, cal_c, conf.level =0.99, var.equal=F)
+fligner.test(df$cal, df$brand, conf.level=0.99)
+t.test(cal_a, cal_c, conf.level =0.99, var.equal=T)
+
+```
+
+**14. Out of 100 people, 60 prefer A to C. Determine a 99% confidence interval for the population proportion that favors A in front of C. Test the null hypothesis that selecting A and C has equal probability.**
+
+The null hypothesis cannot be rejected at 99% confidence
+```{r}
+
+table(df$brand)
+prop.table(table(df$brand))
+prop.test(x=60, n=100, p=0.5, conf.level=0.99, correct=F)
+```
+
+**15. A second survey considered 200 people, 110 prefer A to C. Determine a 99% confidence interval for the difference in the population proportion that favors A in front of C accounting the two surveys. Test the null hypothesis that selecting A brand has a lower probability in the second of the surveys.**
+
+The null hypothesis again cannot be rejected using a 99% confidence level
+
+```{r}
+
+prop.test(x=c(60, 110), n=c(100, 200), alternative="greater", conf.level=0.99, correct=F)
+
+```
+
+**Do not forget to Knit to .pdf before posting your answers in ATENEA. **

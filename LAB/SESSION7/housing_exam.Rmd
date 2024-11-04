@@ -1,0 +1,320 @@
+---
+title: "22-23-SIM-PARTIAL sol"
+author: "LÍdia Montero"
+date: "November, 3rd 2022"
+output: 
+  pdf_document: 
+    toc: true
+    toc_depth: 3
+    number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Boston Housing Data
+
+*Load Housing.RData file in your current R or RStudio session. Median value of owner-occupied homes in $1000's (medv) is going to be our numeric target and chas our target factor (chas has to be converted to factor). Use df dataset.*
+
+
+```{r,echo=FALSE}
+rm(list=ls())
+options(contrasts=c("contr.treatment","contr.treatment"))
+library(car)
+library(FactoMineR)
+library(missMDA)
+library(chemometrics)
+
+
+if(!is.null(dev.list())) dev.off()
+rm(list = ls())
+
+load("Housing.RData")
+options(contrasts=c("contr.treatment","contr.treatment"))
+summary(df)
+df$f.chas<-factor(df$chas,labels=c("Otherwise","River"))
+
+numeric_cols <- c("crim", "zn", "indus", "nox", "rm", "age", "dis", "rad", "tax", "ptratio", "b", "lstat", "medv")
+cat_cols <- c("f.hcla", "f.chas")
+```
+
+**All qüestions account for 1 point (you have to answer 10 out of 15)**
+
+**1.	Some observations have an 'medv' value of 50.0. These data points contain missing or censored values. Since medv is a numeric target, which suitable actions are needed before starting a deeper analysis? Implement those actions in your dataset.**
+
+
+These values are codifications for numerical NA's, therefore should be treated as any kind of missing value and to be imputed for further analysis.
+
+```{r}
+
+na_ids <- which(df$medv == 50.0)
+df$medv[na_ids] <- NA
+
+res_pca <- imputePCA(df[, numeric_cols])
+df$medv[na_ids] <-  res_pca$completeObs[na_ids, "medv"]
+
+
+summary(df$medv)
+```
+
+
+**2. Determine thresholds for mild and severe outliers for the average number of rooms among homes in the neighborhood. Are there any outliers? Indicate observation id's and atypical numbers for average rooms.**
+
+There are 30 mild outliers and just one extreme outlier being the one with id 366. In order for a house to be considered an outlier must have less than 3.65 rooms (Extreme case) or less than 5 (Mild case). In the upper side of the outliers we can see that more of 7.5 rooms is considered a mild outlier and that almost 9 is an extreme outlier. 
+
+```{r}
+Q1 <- quantile(df$rm, 0.25)
+Q3 <- quantile(df$rm, 0.75)
+IQR = Q3 - Q1
+
+mild_up <- Q3 + 1.5*IQR
+mild_low <- Q1 - 1.5*IQR
+
+ext_up <- Q3 + 3*IQR 
+ext_low <- Q1 - 3*IQR
+
+mild_ids <- which((df$rm < mild_low) & (df$rm > ext_low) | (df$rm > mild_up) & (df$rm < ext_up))
+mild_ids
+ext_ids <- which((df$rm < ext_low) | (df$rm > ext_up))
+ext_ids
+
+
+boxplot(df$rm, col="red", main="Boxplot for number of rooms")
+abline(h=ext_up, col="purple")
+abline(h=ext_low, col="purple")
+abline(h=mild_up, col="blue")
+abline(h=mild_low, col="blue")
+```
+
+
+**3.	Replace by NA those outliers in RM variable detected in Point 2 and use an imputation procedure discussed in class to fill outlier data points. Assess the consistency of imputed value/s.**
+
+As we can see in the plot, the imputed values almost do not change the original distribution, therefore the imputation quality is high and its indeed a good idea to perform.
+
+```{r}
+#Nullify
+impute_ids <- c(mild_ids , ext_ids)
+impute_ids
+
+df[impute_ids, "rm"] <- NA
+
+#Imputation
+res_imp <- imputePCA(df[, numeric_cols])
+
+
+quantile(df$rm, prob=seq(0.1, by=0.1), na.rm=T)
+quantile(res_imp$completeObs[, "rm"], prob=seq(0.1, by=0.1))
+
+plot(quantile(df$rm, prob=seq(0.1, by=0.1), na.rm=T))
+lines(quantile(res_imp$completeObs[, "rm"], prob=seq(0.1, by=0.1)))
+
+#THis would be the command
+#df$rm[impute_ids] <- res_imp$completeObs[impute_ids, "rm"]
+
+
+
+
+```
+
+**Remove from dataset those observations with NA in RM variable (room number) in Point 3. Calculate the correlation matrix for numerical variables rm, lstat, ptratio and medv and answer the following questions:**
+
+
+
+**4. Would you expect a neighborhood that has an 'LSTAT' value (percent of lower class workers) of 15 have home prices greater or less than a neighborhood having a 20 'LSTAT' value?**
+
+Looking at the correlation of lstat and medv (Big negative) we asses that higher values of LSTAT will land smaller values of MEDV, therefore indeed LSTAT 15% will probably have higher prices than a neighborhood with an LSTAT of 20%.
+
+```{r}
+library(corrplot)
+?cor
+cor(df[, numeric_cols])
+corrplot(cor(df[, numeric_cols]))
+```
+
+
+
+**5. Analyse the profile of the numeric target (medv) using condes() method. A detailed explanation of procedure results is requested.**
+
+Firstly we see that there is a categorical variable being f.hcla that has a some association with the variable MEDV. This factor explains over 0.37 of the medv variance. Looking at the 3 different clusters of f.hcla we can see that the first has a superior medv mean value 5.92, the second has a similar value to the mean and the third has a significant lower overall mean. 
+
+Following up, looking at quantitative variables we can assess that the most related variables to MEDV are directly the number of rooms (rm , 0.66) and the the proportion of residential land zoned (zn, 0.41). Looking at the inverse relations, we can strongly see that the proportion of lower class people has a high inverse effect (lstat, -0.75) and the proportion of industries (indus, -0.59).
+
+
+
+```{r}
+
+res_medv <- condes(df, num.var=14)
+
+res_medv$category
+
+res_medv$quali
+
+res_medv$quanti
+```
+
+
+**6. Analyse the profile of the binary target (chas) using a suitable method. A detailed explanation of procedure results is requested.**
+
+Looking at the quantitative variables we can see that there is a huge global association with chas, being a derived variable, but i has also some global association with ptratio primarily. Taking a closer look at this variable, we can see that on the case of f.chas="River" the mean is slightly below the overall mean, same for the standard deviation but much smaller and marginally.  
+
+Taking a closer look at the boxplots and quantiles, we can also see a singificant diference in the distribution (median and third quantile specially), suggesting that the ratio is bigger if the neighboorhood is near the river.
+
+
+```{r}
+
+res_chas <- catdes(df, num.var=16)
+
+res_chas$quanti.var
+
+res_chas$quanti
+
+Boxplot(df$ptratio ~ df$chas, col=rainbow(2))
+tapply(df$ptratio, df$chas, summary)
+
+```
+
+
+**7.	Discuss whether a normal distribution would be a reasonable distribution for medv target.**
+
+Looking at the mean and sd we can notice that the standard deviation is quite high and that despite the mean and the median are quite similar (Good sign), but there is a long tail of values and outliers in the upper side. Looking at the plot we can conclude that the normal distribution density function doesn't match the histogram much, but after applying a shapiro test for normality and rejecting the null hypothesis, we get yet another indicator that this distribution is not normal.
+
+
+
+```{r}
+summary(df$medv)
+mm <- mean(df$medv); mm 
+ss <- sd(df$medv); ss
+
+?hist
+hist(df$medv, freq=F, main="Distribution of MEDV", 20)
+curve(dnorm(x,mm, ss ), col="red", add=T, lwd=2)
+
+shapiro.test(df$medv)
+
+```
+
+**8.	Is there variance homogeneity in the medv target groups defined by f.hcla clusters?**
+
+Given that the variable is not normal we won't apply parametric methods (Like Bartlett) but rather non-parametric ones (Fligner/Levene). f.hcla is a variable with 3 levels, therefore there are 3 populations. 
+
+H0: variances of the 3 groups are equals (Homoskedasticity)
+HA: neq (Heteroskedasticity)
+
+Looking at both tests, we can safely  discard the null hypothesis, this sample from the population points that the population isn't prbably homoskedastic at 1% or 5% signfiicance level. Group 3 has a quite different standard deviation.
+
+
+```{r}
+
+leveneTest(medv ~ f.hcla, data=df)
+fligner.test(medv ~ f.hcla, data=df)
+Boxplot(medv ~ f.hcla, data=df)
+tapply(df$medv , df$f.hcla, sd)
+```
+
+
+**9.	Mean medv target can be considered to be the equal across groups defined by f.hcla cluster? Use a two.sided test at 99% confidence.**
+
+Just looking at the means we already see that the 3 values are quite different 28/23/15, but also taking an ANOVA kruskal test we get a tiny p-value that leads us to reject the null hypothesis, even at 99% confidence. 
+
+```{r}
+
+?kruskal.test
+kruskal.test(medv ~ f.hcla, data=df)
+tapply(df$medv, df$f.hcla, mean)
+pairwise.wilcox.test(df$medv, df$f.hcla)
+```
+
+**10.	State and test one.sided hypothesis to assess whether medv is greater for f.hclas 1 than for class 3 or the opposite at 99% confidence.**
+
+We see a huge p-value in the order of 10^-16 using a non-parametric wilcox-test, therefore we can safely reject the null hypothesis for any significance level. 
+H0: MU_1 = MU_3
+HA: MU_1 > MU_3
+
+```{r}
+
+?wilcox.test
+medv_lvl1 <- df$medv[df$f.hcla == 1]
+medv_lvl3 <- df$medv[df$f.hcla == 3]
+wilcox.test(medv_lvl1, medv_lvl3, alternative="greater", conf.level=0.99)
+
+
+pairwise.wilcox.test(df$medv, df$f.hcla, alternative="less", conf.level=0.99)
+pairwise.wilcox.test(df$medv, df$f.hcla, alternative="greater")
+
+```
+
+**11.	The standard deviation of medv in f.hcla 1 should not exceed 10,000$. For the sample in f.hcla 1 in your dataset, calculate the standard deviation of medv assuming a normal distribution. Stating any assumptions, you need (write them), test at the 1% level the null hypothesis that the population standard deviation is not larger than 10,000$ against the alternative that it is.**
+
+The standard deviation of f.hcla == 1 is 6900$.
+
+Assuming a normal distribution of medv, we can use a varTest with SD = 10 --> Var = 100. We get a huge p-value therefore we cannot reject the null hypothesis and accept the alternative one. Doing the other 2 possible tests we see that obviously,we reject the null hypothesis that the variance is equal to 100, and even we can surely say that is lower that 100.
+
+H0: VAR(medv_f.chla=1) = 10000
+HA: VAR(...) > 10000
+
+```{r}
+sd(medv_lvl1)
+var(medv_lvl1)
+
+varTest(medv_lvl1, alternative="greater", sigma.squared=100, conf.level=0.99)
+varTest(medv_lvl1, alternative="less", sigma.squared=100, conf.level=0.99)
+varTest(medv_lvl1, alternative="two.sided", sigma.squared=100, conf.level=0.99)
+
+?varTest
+```
+
+**12.	Figure out the 99% upper threshold for medv in f.hcla 1 population variance. Normal distribution for medv is assumed to hold.**
+
+Assuming a normal distribution and performing a "less" varTest we get an upper threshold of 69.61 and doing the opposite we get a 34.49 lower threshold.
+```{r}
+varTest(medv_lvl1, alternative="greater", sigma.squared=100, conf.level=0.99)
+varTest(medv_lvl1, alternative="less", sigma.squared=100, conf.level=0.99)
+```
+
+**13.	Build a 99% two-sided confidence interval for the difference in the mean of medv between f.hcla 1 and 3. Assume that equal variances in the population medv does not hold and normal distribution of medv (to simplify the calculations), but justify if these assumptions are critical.**
+
+Despite normal distribution constraint not holding and equal variance (Homoskedasticity) not being met, we have a huge greater important constraint met: independence of populations. Therefore we can easily use a t.test or wilcox to asses. Both tests produce tiny p-values that suggest the unlikelihood of both means being equal
+
+H0: MU_lvl1 = MU_lvl3 
+HA: neq
+
+
+```{r}
+?t.test
+t.test(medv_lvl1, medv_lvl3, var.equal=F, paired=F)
+wilcox.test(medv_lvl1, medv_lvl3)
+
+```
+
+**14.	Determine a 99% confidence interval for the population proportion that favors Riverside in front of Otherwise. Test the null hypothesis that selecting Riverside and Otherwise zones has equal probability.**
+
+Given the following test
+HO: prop(otherwise = 0.5 (equal probability) = prop(river)
+HA: prop(river) != 0.5
+
+we get a tiny pvalue that indicates that the null hypothesis of equal probability is highly unlikely, and a "less" test confirms us that this proportion is lower than 0.5. Therefore otherwise locations are prefered before riverside.
+
+```{r}
+cnt_river <- table(df$f.chas)
+cnt_river
+prop.table(cnt_river)
+
+?prop.test
+prop.test(x=28, n=488, p=0.5, alternative="two.sided", conf.level=0.99, correct=F)
+prop.test(x=28, n=488, p=0.5, alternative="less", conf.level=0.99, correct=F)
+
+```
+
+**15.	A new survey considered 300 people, 110 prefer Riverside to Otherwise locations. Determine a 99% confidence interval for the difference in the population proportion that favors Riverside in front of other areas accounting the two sources. Test the null hypothesis that selecting Riverside zones has a greater probability in the survey.**
+
+H0: prop(river) = prop(river_survey)
+HA: prop(river) < prop(river_survey)
+
+We get a tiny value that points at the huge unprobability that the true population proportion of favouring riverside versus the surveys is the same. We even get that the proportion of people that favoured riverside was even less than now compared to the new survey.
+
+```{r}
+
+prop.test(x=c(28, 110), n=c(488, 300), conf.level=0.99, correct=F, alternative="less")
+
+```
+
+**Do not forget to knit your .Rmd file to .pdf (or to word and afterwards to pdf) before posting it on the ATENEA platform**
