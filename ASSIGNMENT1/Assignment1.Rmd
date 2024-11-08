@@ -34,7 +34,6 @@ library(car)
 
 # Define some functions to avoid repetition of same processes
 ```{r}
-
 calculate_outliers <- function(data) {
   # Check for regular outliers
   outliers <- boxplot.stats(data)$out
@@ -57,6 +56,33 @@ calculate_outliers <- function(data) {
     num_outliers = num_outliers,
     num_severe_outliers = num_severe_outliers
   ))
+}
+
+summary_and_normality_check <- function(data) {
+  #Basic summary 
+  print("Summary: ")
+  print(summary(data))
+  
+  # Plot normality 
+  print("Mean")
+  mm <- mean(data); print(mm)
+  print("Standard deviation")
+  ss <- sd(data); print(ss)
+  hist(data,freq = F,100, main = "Histogram")
+  curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
+  
+  #Compute skewness
+  print("Skewness")
+  print(skewness(data))
+  
+  #Number of outliers
+  print("Outliers: ")
+  print(calculate_outliers(data))
+  
+  #Shapiro test
+  print("Shapiro test: ")
+  print(shapiro.test(data))
+
 }
 
 ```
@@ -84,8 +110,8 @@ The histogram overlaid with a normal curve highlights the deviation from a norma
 In this variable there are 126  values = "1962.667684" we should consider these as NA 
 
 ```{r}
-summary <- summary(variable); summary
 variable <- train$avganncount
+summary <- summary(variable); summary
 
 variable[variable == 453.5494221] <- NA
 summary <- summary(variable); summary
@@ -122,7 +148,9 @@ calculate_outliers(train$avganncount)
 
 ### Variable *avgdeathsperyear*
 
-In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer". It has no missing values. The difference between the mean (191.6) and median (62) indicates that the distribution is not symmetric. Moreover, the first and third quartiles (29 and 140.5, respectivelly) are lower than the mean and the maximum value of 14010, further suggesting a skewed ditribution. With the help of graphical tools like the boxplot we can confirm the skeweness, obtaining 225 outliers (138 of which are severe), indicating a large right tail. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation, and the Shapiro test also confirms the non-normality of the variable. 
+In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer".
+
+It has no missing values. The difference between the mean (191.6) and median (62) indicates that the distribution is not symmetric. Moreover, the first and third quartiles (29 and 140.5, respectivelly) are lower than the mean and the maximum value of 14010, further suggesting a skewed ditribution. With the help of graphical tools like the boxplot we can confirm the skeweness, obtaining 225 outliers (138 of which are severe), indicating a large right tail. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation, and the Shapiro test also confirms the non-normality of the variable. 
 
 ```{r}
 
@@ -170,7 +198,9 @@ calculate_outliers(variable)
 
 ### Variable *incidencerate* : 
 
-Variable *incidencerate* is a numerical variable that expresses "Mean per capita (100,000) cancer diagnoses". The variable has no missing values. It has similar mean (449) and median (453.5) values given its range and suggesting a simmetry distribution. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
+Variable *incidencerate* is a numerical variable that expresses "Mean per capita (100,000) cancer diagnoses". 
+
+The variable has no missing values. It has similar mean (449) and median (453.5) values given its range and suggesting a simmetry distribution. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
 
 -- anna -- 
 In this variable there are 126  values = "453.5494221" we should consider these as NA (same rows as avganncount variable) 
@@ -202,7 +232,9 @@ calculate_outliers(variable)
 
 ### Variable *medincome* :
 
-Variable *medincome* is a numerical variable that expresses the "Median income per county". Thanks to the histogram, Shapiro test, and skeweness value, we see how the distribution is neither Normal nor symmetric, but it is skewed with a long right tail. It has 69 outliers, 15 of them severe. The highest value is for Loudoun County, Virginia. There are no missing values in this variable. 
+Variable *medincome* is a numerical variable that expresses the "Median income per county".
+
+Thanks to the histogram, Shapiro test, and skeweness value, we see how the distribution is neither Normal nor symmetric, but it is skewed with a long right tail. It has 69 outliers, 15 of them severe. The highest value is for Loudoun County, Virginia. There are no missing values in this variable. 
 
 ```{r}
 
@@ -225,7 +257,9 @@ calculate_outliers(variable)
 
 ### Variable *popest2015* :
 
-Variable *popest2015* is a numerical variable that expresses the population of the county. It does not count with missing values. It has a long range and is highly skewed, with a long right tail. In fact, it contains 252 outliers, 162 of which are severe, and all of them are above the upper whisker in the boxplot. The highest value is for Los Angeles County, California. 
+Variable *popest2015* is a numerical variable that expresses the population of the county.
+
+It does not count with missing values. It has a long range and is highly skewed, with a long right tail. In fact, it contains 252 outliers, 162 of which are severe, and all of them are above the upper whisker in the boxplot. The highest value is for Los Angeles County, California. 
 The large difference between the mean (106.841) and median (27.158), along with the spread between the 1st (12.191) and 3rd quartiles (66.880), indicates a positively skewed distribution, where extreme high values are pulling the mean upward.
 
 ```{r}
@@ -250,8 +284,9 @@ calculate_outliers(variable)
 
 ### Variable *povertypercent* : 
 
+Variable *povertypercent* is a numerical variable that expresses the percent of population in poverty and has no missing values.
 
-Variable *povertypercent* is a numerical variable that expresses the percent of population in poverty and has no missing values. Similarly to other variables, it has a skewed distribution with a larger right tail. It has 42 outliers, but none of them is severe. The p-value obtained in the shapiro_test confirms the rejection of the null hypothesis, concluding that the variable does not have a normal distribution. 
+Similarly to other variables, it has a skewed distribution with a larger right tail. It has 42 outliers, but none of them is severe. The p-value obtained in the shapiro_test confirms the rejection of the null hypothesis, concluding that the variable does not have a normal distribution. 
 
 ```{r}
 
@@ -273,8 +308,9 @@ calculate_outliers(variable)
 
 ### Variable *studypercap* : I CONSIDER IT IS WORTH TO REMOVE
 
+Variable *studypercap* is a numerical variable that expresses "Per capita number of cancer-related clinical trials per county".
 
-Variable *studypercap* is a numerical variable that expresses "Per capita number of cancer-related clinical trials per county". It contains no missing values, and has 307 outliers (222 severe). Its distribution is non-symmetric. Note that 1162 out of 1831 observations contain value 0 in this variable, which indicates that it may only provide noise to the model. **Thus, we consider it is worth to remove the variable. **
+It contains no missing values, and has 307 outliers (222 severe). Its distribution is non-symmetric. Note that 1162 out of 1831 observations contain value 0 in this variable, which indicates that it may only provide noise to the model. **Thus, we consider it is worth to remove the variable. **
 
 
 ```{r}
@@ -296,7 +332,6 @@ calculate_outliers(variable)
 
 ### Variable *binnedi* : I CONSIDER IT IS WORTH TO REMOVE
 
-
 Variable *binnedi* is a categorical variable (or factor) that expresses the median income per capita binned by decile. The variable 
 
 -- anna -- I'll remove the variable if we require precision or need the full detail of income differences but
@@ -315,7 +350,10 @@ barplot(table(variable), main="Bar Plot of Variable", xlab="Categories", ylab="F
 
 
 ### Variable *medianage* :
-Medianage is a numerical variable that expresses the median age of county residents. The variable has no missing values. Has 65 outliers, 18 of which are severe outliers. All of these outliers should be removed because it's impossible to be more than 100 years. Once we removed all the incorrect values we get 52 outliers, 18 of then severe. Finally we observe a symmetric distribution with a median = 40.90 and a mean=40.85. After analyzing the boxplot, and the histogram along the Shapiro test we can discard the normality of the variable's distribution.
+
+Medianage is a numerical variable that expresses the median age of county residents. 
+
+The variable has no missing values. Has 65 outliers, 18 of which are severe outliers. All of these outliers should be removed because it's impossible to be more than 100 years. Once we removed all the incorrect values we get 52 outliers, 18 of then severe. Finally we observe a symmetric distribution with a median = 40.90 and a mean=40.85. After analyzing the boxplot, and the histogram along the Shapiro test we can discard the normality of the variable's distribution.
 
 
 ```{r}
@@ -340,7 +378,10 @@ shapiro.test(variable)
 
 
 ### Variable *medianagemale* :
-Numeric variable, represents the mean age of the male population of each county. There are no missing values and it has 46 outliers, non of them several outliers. The mean is 39.59 yo and the median 39.50yo what suggest a simmetry distribution. After looking at the results of the shapiro-test it doesn't have a normal distribution 
+
+Numeric variable, represents the mean age of the male population of each county.
+
+There are no missing values and it has 46 outliers, non of them several outliers. The mean is 39.59 yo and the median 39.50yo what suggest a simmetry distribution. After looking at the results of the shapiro-test it doesn't have a normal distribution 
 
 ```{r}
 variable <- train$medianagemale
@@ -361,7 +402,9 @@ shapiro.test(variable)
 
 ### Variable *medianagefemale* : I AM NOT SURE IF IT'S WORTH IT TO SEPARATE THE MEDIANAGE WITH SEX
 
-The medianagefemale is a numerical variable that analyze the median age of the females in each county. It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing the results of the Shapiro-test we observe that does not have a normal distribution. 
+The medianagefemale is a numerical variable that analyze the median age of the females in each county.
+
+It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing the results of the Shapiro-test we observe that does not have a normal distribution. 
 
 
 
@@ -383,6 +426,7 @@ shapiro.test(variable)
 
 
 ### Variable *geography* :
+
 Categorical variable that shows the name of each county. We can use this variable as a PK 
 
 --comment -- 
@@ -397,7 +441,10 @@ table(variable)
 ```
 
 ### Variable *percentmarried* 
-Numerical variable that represent the percent of county residents who are married. It has a non-symmetric distribution, it is skewed with a long left tail observed in the histogram. It doesn't have missing values, it has 34 outliers (non of them severe) and they are concentrated on the lower end of the distribution. With the shapiro-test we can confirm the rejection of the null hypothesis, therefore it doesn't have a normal distribution.   
+
+Numerical variable that represent the percent of county residents who are married.
+
+It has a non-symmetric distribution, it is skewed with a long left tail observed in the histogram. It doesn't have missing values, it has 34 outliers (non of them severe) and they are concentrated on the lower end of the distribution. With the shapiro-test we can confirm the rejection of the null hypothesis, therefore it doesn't have a normal distribution.   
 
 
 ```{r}
@@ -419,7 +466,9 @@ shapiro.test(variable)
 
 ### Variable *pctnohs18_24* 
 
-Numerical variable that show the percentage of county residents aged 18-24 whose highest level of education is less than a high school diploma. The distribution of this variable is skewed with a long right tail, we can confirm that it doesn't have a normal distribution thanks to the histogram and the curve. Moreover the p-value obtained in the shapiro-test confirm the non normal distribution. It doesn't have misssing values, and it has 35 outliers, 5 of them severe. 
+Numerical variable that show the percentage of county residents aged 18-24 whose highest level of education is less than a high school diploma.
+
+The distribution of this variable is skewed with a long right tail, we can confirm that it doesn't have a normal distribution thanks to the histogram and the curve. Moreover the p-value obtained in the shapiro-test confirm the non normal distribution. It doesn't have misssing values, and it has 35 outliers, 5 of them severe. 
 
 ```{r}
 
@@ -438,7 +487,10 @@ shapiro.test(variable)
 ```
 
 ### Variable *ppcths18_24* 
-Numeric variable, it represent the percentage of county residents ages 18-24 highest education attained is a high school diploma. We can observe with the median(34,7%) and the mean(35%) that the variable has a symmetric distribuition, but after the shapiro_test we observe that it doesn't have a normal distribution. It doesn't have missing values and it has 33 outliers, non of them severe. 
+
+Numeric variable, it represent the percentage of county residents ages 18-24 highest education attained is a high school diploma.
+
+We can observe with the median(34,7%) and the mean(35%) that the variable has a symmetric distribuition, but after the shapiro_test we observe that it doesn't have a normal distribution. It doesn't have missing values and it has 33 outliers, non of them severe. 
 ```{r}
 variable <- train$pcths18_24
 
@@ -457,7 +509,9 @@ shapiro.test(variable)
 
 ### Variable *pctsomecol18_24* NOT WORTH TO USE IT (75% MISSING VALUES)
 
-Numerical variable. Percent of county residents ages 18-24 highest education attained some college. It has 1375 missing values. (75%) therefore we would remove this variable. 
+Numerical variable. Percent of county residents ages 18-24 highest education attained some college. 
+
+It has 1375 missing values. (75%) therefore we would remove this variable. 
 
 
 ```{r}
@@ -466,8 +520,11 @@ summary <- summary(variable); summary
 
 ```
 
-### Variable pcths25_over*
-Numerical variable that express the percentage of county residents ages 25 and over highest education attained a high school diploma. It doesn't have missing values but it have 18 outliers, non of the severe. It doesn't have a normal distribution.
+### Variable *pcths25_over*
+
+Numerical variable that express the percentage of county residents ages 25 and over highest education attained a high school diploma.
+
+It doesn't have missing values but it have 18 outliers, non of the severe. It doesn't have a normal distribution.
 ```{r}
 variable <- train$pcths25_over
 summary <- summary(variable); summary
@@ -477,23 +534,139 @@ ss <- sd(variable)
 Boxplot(variable, main="Boxplot")
 hist(variable , freq=F, 100, main="Histogram")
 curve(dnorm(x,mean=mm,sd=ss),col='red', lwd=2, add = T)
+skewness(variable)
 
 calculate_outliers(variable)
 shapiro.test(variable)
 ```
 
+### Variable *pctachdeg25_over*
+
+Numerical variable that expresses the the percentage of country resident ages 25 and over highest education attained: Bachelor's degree. 
+
+Firstly we can see that there is a huge left skewness and there is a relatively large number of outliers (62), from which just 3 are severe. From the plot we can already tell that no normal distribution is followed and a shapiro test over the variable confirms it.
+
+```{r}
+summary_and_normality_check(train$pctbachdeg25_over)
+
+```
+
+### Variable *pctemployed16_over*
+
+Numerical variable that represents the percentage of county residents ages 16 and over, employed. 
+
+This variable contains over 82 NA values and has a slight right skewness and 11 mild outliers. Both inferential and visualization methods clearly point that the real distribution is extremely unliekly to be normal.
 
 
+```{r}
+summary_and_normality_check(na.omit(train$pctemployed16_over))
+
+```
+
+### Variable *pctunemployed16_over*
+
+Numerical variable that represents the percentage of county residents ages 16 and over, unemployed.
+
+This variable is heavily left skewed and contains over 46 outliers, of which 4 are severe. Despite the distrirbution looking almost normal there is a big number of outliers and a long heavy right tail. Applying a shapiro test we reject the hypothesis that the distribution is normal.
+
+```{r}
+summary_and_normality_check(train$pctunemployed16_over)
+```
+
+### Variable *pctprivatecoverage* 
+
+Numerical variable that represents the percentage of county residents with private health coverage.
+
+Despite having no NA and just 17 mild outliers, this variable has a huge standard deviation and a right skewed mean. Applying a shapiro test we reject the hypothesis that the distribution is normal.
+
+```{r}
+summary_and_normality_check(train$pctprivatecoverage)
+```
+
+### Variable *pctprivatecoveragealone*
+
+Numerical variable that represents the percentage of county residents with private health coverage alone (no public assistance at all).
+
+The number of NA is humongous (356), but it has a small amount of mild outliers (4) and almost no skewness at all. Both using inferential and visualizations methods we cannot easily reject the hypothesis that this variable is not normal. So we can loosely say that is **normally** distributed.
+
+```{r}
+summary_and_normality_check(na.omit(train$pctprivatecoveragealone))
+```
+### Variable *pctempprivcoverage*
+
+Numerical variable that represents the percentage of county residents with employee-provided private health coverage. 
+
+Despite the low number of outliers (7 mild), the absence of NA, the small left skewness and the median being almost equal to the mean, we should reject the null hypothesis that the distribution is normal with a 5% significance. However, with a smaller significance level than 2.5% we couldn't reject that this distribution is not normal. **Almost normal**
+
+```{r}
+summary_and_normality_check(na.omit(train$pctempprivcoverage))
+```
+### Variable *pctpubliccoveragealone*
+
+Numerical variable that represents the percent of county residents with government-provided health coverage alone.
+
+This variable contains 21 mild outliers, a great left skewness and a long right tail. Performing an inferential test like shapiro we get a tiny p-value which makes us reject the hypothesis that the distribution is normal under any significance level.
+
+```{r}
+summary_and_normality_check(na.omit(train$pctpubliccoveragealone))
+```
+### Variable *pctwhite* 
+
+Numerical variable that represents the percent of county residents who identify as White.
+
+Both from the plot and from inferential methods we can easily discard that this variable is anywhere near normal, being a hugely right skewed variable. It contains 104 outliers from which 7 are severe.
+
+This points out that the vast majority of counties have a high percentage of white population.
 
 
+```{r}
+summary_and_normality_check(train$pctwhite)
+```
+### Variable *pctblack*
+
+Numerical variable that represents the percent of county residents who identify as Black.
+
+There is a huge number of outliers (323), from which  99 are severe and there is also a huge left skewness, that points out that the vast majority of counties (except the outliers) have a rather low percentage of black folks. The distribution almost looks like a power law distribution (Zipf) therefore we can safely reject both with visualization and inferential methods that the distribution of this variable is not normal.
+```{r}
+summary_and_normality_check(train$pctblack)
+```
+### Variable *pctasian*
+
+Numerical variable that represents the percent of county residents who identify as Asian.
+
+Pretty similarly to the last distribution, we have a heavily left skewed zipfian like distribution, with 305 outliers (from which 107 are severe), pointing out that the vast majority of counties have less than 3% of asian percentage.
+
+```{r}
+summary_and_normality_check(train$pctasian)
+```
+### Variable *pctotherrace*
+
+Numerical variable that represents the percent of county residents who identify as any other race (Pacific islanders, arabians, saiyajins, namekians...).
+
+Again this variable, just like the last 2 presents a huge left skewness and zipfian like distribution with 283 outliers, from which 102 are severe. Again this sampled distribution is not normal.
 
 
+```{r}
+summary_and_normality_check(train$pctotherrace)
+```
+### Variable *pctmarriedhouseholds*
 
+Numerical variable that represents the percent of married households.
 
+This variable contains 59 outliers from which 2 are severe and a noticeable left skewness. Visualization isn't that clear, but using inferential methods like shapiro test we reject the null hypothesis that this variable is normal. 
 
+```{r}
+summary_and_normality_check(train$pctmarriedhouseholds)
+```
 
+### Variable *birthrate*
 
+Numerical variable that represents the number of births relative to number of women in that specific county. 
 
+Finally, this last variable contains a fair amount of outliers (121) from which 17 are severe. It also has a fair amount of left skewness. Both from visualization and shapiro testing we reject that this sample variable is normal.
+```{r}
+summary_and_normality_check(train$birthrate)
+```
 
 ## Data Quality Report 
 
@@ -502,7 +675,7 @@ Per variable, count:
 - Number of missing values.
 - Number of errors (including inconsistencies).
 - Number of outlines.
--Rank variables according the sum of missing values (and errors).
+- Rank variables according the sum of missing values (and errors).
 
 
 ```{r}
