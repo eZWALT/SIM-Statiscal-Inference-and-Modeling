@@ -670,6 +670,8 @@ summary_and_normality_check(train$birthrate)
 
 ## Data Quality Report 
 
+Now that all the variables have been slightly analyzed in terms of their meaning
+
 Per variable, count:
 
 - Number of missing values.
@@ -744,7 +746,7 @@ Create a variable adding the total number of missing values, outliers and errors
 
 
 
-
+## 
 
 
 

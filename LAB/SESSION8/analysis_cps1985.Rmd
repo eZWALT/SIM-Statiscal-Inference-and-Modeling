@@ -1,0 +1,135 @@
+---
+title: "CPS1985 Analysis"
+author: "Walter J.T.V"
+date: "2024-11-11"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# CPS 1985 analysis example
+
+## Load the data 
+
+```{r}
+library(AER)
+library(car)
+library(FactoMineR)
+library(chemometrics)
+library(MASS)
+
+data("CPS1985")
+
+df <- CPS1985
+
+summary(df)
+```
+
+
+## Check multivariate outliers 
+
+```{r}
+
+#We need to look at the collinearity of the variables (DONT USE CORRELATED VARIABLES OR ONES THAT HAVE JUST A FEW DIFFERENT VARIABLES)
+num_vars <- df[, c("age", "wage", "education", "experience")]
+library(corrplot)
+corrplot(cor(num_vars))
+num_vars$age <- NULL  
+
+res_mout <- Moutlier(num_vars, quantile=0.995)
+
+plot(x=res_mout$md, y=res_mout$rd, main="Classic mahalanobis distance vs robustified")
+abline(h=res_mout$cutoff, col="red")
+abline(v=res_mout$cutoff, col="red")
+
+mout_ids <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff)); mout_ids
+
+df <- df[-mout_ids, ]
+```
+
+## Modelling exercise
+
+3 steps for modelling flow: 
+
+### Numerical variables
+We need to use significant variables, we can use variance inflation factor (VIF), that indicates that including each variable how much variability is introduced in the model in terms of standard error. VIF (greater than 5 or 10 for example) helps us to search for possible multicollinearity between supposedly independent variables besides of high correlation coeficients.
+
+The solutions to multicolinearity are multiple: 
+
+1. Removing highly correlated X variables (predicates)
+2. Center or standarize such variables
+3. Perform a PCA and use the principal component variables as predicates instead
+4. Regularization techniques such as Ridge (L2)
+
+```{r}
+
+#WE ARE ADDING AGE JUST TO SEE WEIRD BEHAVIOUR
+m1 <- lm(wage ~ education + experience + age, data=df)
+summary(m1)
+#LOOKING AT VARIANCE INFLATION FACTORS WE GET TO SEE THAT EXPERIENCE AND AGE ARE HUGE AND SIMILAR, remove 1
+vif(m1)
+
+m2 <- lm(wage ~ education + age, data=df)
+summary(m2)
+#NOW VARIANCE INFLATION IS SMALL :)
+vif(m2)
+
+
+par(mfrow=c(2,2))
+plot(m2, id.n=0)
+par(mfrow=c(1,1))
+
+# THIS MODEL IS TRASH, IS HETEROSKEDASTIC AND THE VARIANCE IS COMMON, THEREFORE WE NEED TO FIX IT
+boxcox(wage ~ education + age, data=df)
+#boxcox(log(wage) ~ education + age, data=df) # we have to use the log(wage)
+
+#Coefficient of determination (R2) is lower, but 
+m3 <- lm(log(wage) ~ education + age, data=df)
+summary(m3)
+vif(m3)
+
+#Check if our boxcox transformation is useful or nah
+# Looking at the negative MLE of age, we need to do something... 
+boxTidwell(log(wage) ~ education + age, data=df)
+
+# This function performs some tests and plots residuals 
+# We see a curvature in age, therefore we could use a 2nd degree polynomial transformation 
+residualPlots(m3)
+
+m4 <- lm(log(wage) ~ education + poly(age, 2), data=df)
+#LOOKING AT THE P VALUES BOTH TERMS OF THE AGE ARE SIGNIFICANT
+summary(m4)
+vif(m4)
+# Now the age is not curved :)
+residualPlots(m4)
+
+```
+### Categorical variables
+
+We should perform a condes analysis to gather some information about the factors, therefore only add those that are significant.
+```{r}
+
+names(df)
+m5 <- lm(log(wage) ~ education + poly(age, 2) + ethnicity + region + gender + occupation + sector + union + union + married, data=df)
+summary(m5)
+vif(m5)
+residualPlots(m5)
+
+#Bayesian stuff
+
+?step
+m6 <- step(m5)
+
+# We are going to compare these 2 nested models
+# Looking at the significance code given by output R, its worth using the additional factors
+anova(m4, m6)
+
+#However, there are some that are not that important... 
+# However using summary() we cannot say that levels are important using pvalues... 
+# We need to consider all the levels (one-encoded as dummy variables) of a variable ...
+anova(m6)
+library(effects)
+plot(allEffects(m6))
+```
+
+
