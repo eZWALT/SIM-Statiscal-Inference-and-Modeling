@@ -3,20 +3,17 @@ title: 'Assignment1: CancerMortality'
 author: "Joan Acero, Anna Monsó, Walter Troiani"
 date: "2024-10-21"
 output:
- pdf_document:
-   toc: true
-editor_options: 
+  html_document:
+    toc: true
+    df_print: paged
+  pdf_document:
+    toc: true
+editor_options:
   chunk_output_type: console
 ---
 
-**HINT: Retain all available numeric variables except those that are not useful in explaining the target.**
-# Questions: 
-
-- Should we remove the outliers, apply transformations, etc.in the first analysis of the variables (Variable Analysis) ?
-
 
 \newpage 
- 
 
 # Load the dataset and required libraries
 ```{r}
@@ -29,7 +26,11 @@ test <- read.csv("test.csv")
 
 library(moments)
 library(car)
-
+library(chemometrics)
+library(mice)
+library(FactoMineR)
+library(corrplot)
+library(VIM)
 ```
 
 # Define some functions to avoid repetition of same processes
@@ -89,12 +90,12 @@ summary_and_normality_check <- function(data) {
 
 \newpage
 
-# Data Preparation
+# Data Preparation & Analysis
 
 In this section, a descriptive analysis is conducted on each variable, a data quality report is generated, and imputation and profiling are addressed.
 
 
-## Univariate Descriptive Analysis (Variable Analysis)
+## Univariate Descriptive Analysis (Variable Analysis) & Data quality
 
 - Original numeric variables corresponding to qualitative concepts have to be converted to factors:
 - Original numeric variables corresponding to real quantitative concepts are kept as numeric but additional factors should also be created
@@ -668,9 +669,16 @@ Finally, this last variable contains a fair amount of outliers (121) from which 
 summary_and_normality_check(train$birthrate)
 ```
 
+
+
+
 ## Data Quality Report 
 
-Now that all the variables have been slightly analyzed in terms of their meaning
+Now that all the variables have been slightly analyzed in terms of their meaning. Given that univariate outliers and NA values have already been computed and shown, only a ranking and a visual summary will be showcased to gather the main insights visually. 
+
+This quality report will be divided between variables and individuals of the dataset, and finally a multivariate outlier analysis will be performed.
+
+### Per variable 
 
 Per variable, count:
 
@@ -682,13 +690,34 @@ Per variable, count:
 
 ```{r}
 
-# Number of missing values.
-# Number of errors (including inconsistencies).
-# Number of outlines.
-# Rank variables according the sum of missing values (and errors).
 
+# Number of errors (including inconsistencies). TODO
+
+md.pattern(train, rotate.names=T)
 ```
 
+On one hand, looking at the pattern, we can notice that there are 362 variables with no null values, and that the vast majority of nulls (1056) are located on the pctsomecol18_24 variable with just 1 null column. Another remarkable trend is that up to 248 individuals have 2 null values in variables pctsomecol18_24 and pctprivatecoveragealone, while this other variable just has 83 pure nulls (Only this column). The last variable that contains a low amount of null values is pctemployed16_over, where 20 indivudals have the last 3 mentioned variables containing nulls, and the rest of few posible NA values come from pattern permutations of these 3 variables. Therefore this dataset only has 3 possible rows containing NA, and only one of them is relevant in this aspect. Ranking:
+
+| Rank | Null values                     |
+|------|---------------------------------|
+|  1   | pctsomecol18_24: 1375 NA        |
+|  2   | pctprivatecoveragealone: 365 NA |
+|  3   | pctemployed16_over: 82 NA       |
+
+On the other hand, the top 5 ranking for variables with the most amount of mild and severe outliers is: 
+
+
+| Rank | Mild Outliers          | Severe Outliers      |
+|------|------------------------|----------------------|
+| 1    | pctblack 323           | avganncount 224      |
+| 2    | studypercap 307        | studypercap 222      |
+| 3    | pctasian 305           | popest2015  162      |
+| 4    | pctotherrace 283       | avgdeathsperyear 138 |
+| 5    | avganncount 273        | pctasian         107 |
+
+
+
+### Per individuals
 
 Per individuals, count:
 
@@ -701,9 +730,13 @@ Per individuals, count:
 ```{r}
 
 #Number of missing values
+
 #Number of errors
+
 #Number of outliers
-#Identify individuals considered as multivariant outliers.
+
+#Identify individuals considered as multivariant outliers. TODO
+res_mout <- Moutlier(num_vars, quantile=0.975)
 
 ```
 
@@ -731,11 +764,30 @@ Create a variable adding the total number of missing values, outliers and errors
 ```
 
 
-## Profiling
+## Profiling & Relationships
 
-- Target : Death rate
 
-*Model fitting to train sample only!!*
+### Numerical variables
+
+```{r}
+
+names(test)
+num_vars <- test[sapply(test, is.numeric)]
+cat_vars <- test[!sapply(test, is.numeric)]
+corrplot(cor(num_vars))
+```
+
+```{r}
+res_anal <- condes(test, num.var=3, proba=0.05)
+```
+
+### Categorical variables
+
+```{r}
+
+res_anal2 <- catdes()
+```
+
 
 
 ```{r}
@@ -745,8 +797,52 @@ Create a variable adding the total number of missing values, outliers and errors
 ```
 
 
+# Modeling (TRAIN DATA)
 
-## 
+```{r}
+
+#Include Code
+
+```
+
+## Model exploration and multicollinearity study
+
+```{r}
+
+#Include Code
+
+```
+
+## Model transformations
+
+```{r}
+
+#Include Code
+
+```
+
+## Model validation
+
+In this section we will assess how well the model performs on the training data (train split) to ensure its robustness and capabilities, so we can assess under/over fitting.
+
+We will analyze the residuals to ensure that model assumptions are met and use R-squared as the main performance metric will the model will be computed by means of Ordinary least squares.
+
+```{r}
+
+#Include Code
+
+```
+
+## Model evaluation
+
+Finally we will evaluate how well the model performs with unseen data (test split) to assess its forecasting capabilities, using the same R-squared performance metric.
+
+```{r}
+
+#Include Code
+
+```
+
 
 
 
