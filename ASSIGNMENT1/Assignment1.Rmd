@@ -28,6 +28,7 @@ library(moments)
 library(car)
 library(chemometrics)
 library(mice)
+library(missMDA)
 library(FactoMineR)
 library(corrplot)
 library(VIM)
@@ -558,20 +559,76 @@ Create a variable adding the total number of missing values, outliers and errors
 
 ## Imputation
 
-- Numeric Variables
-- Factors
+### pctsomecol18_24
+
+Given the huge amount of null values, the impute PCA has not been able to replicate the original distribution of this messy variable. 
+```{r}
+num_vars <- test[sapply(test, is.numeric)]
+miss_ids <- which(is.na(test$pctsomecol18_24)) 
+res_imp <- imputePCA(num_vars)
+imp_pctsomecol <- res_imp$completeObs[, "pctsomecol18_24"]
+
+# Calculate the quantiles for validation
+quantiles_test <- quantile(test$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_imp <- quantile(imp_pctsomecol, probs = seq(0, 1, 0.1), na.rm = FALSE)
+
+plot(seq(0, 1, 0.1), quantiles_test, type = "l", col = "blue", lwd = 2,
+     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
+lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
+legend("topright", legend = c("test$pctsomecol18_24", "imp_pctsomecol"),
+       col = c("blue", "red"), lwd = 2)
+```
+
+### pctemployed16_over 
+
+pctemployed16_over only contains 70 null values and the imputePCA function has been able of almost perfectly preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the test data.
 
 ```{r}
 
-#Include Code
+num_vars <- test[sapply(test, is.numeric)]
+miss_ids <- which(is.na(test$pctemployed16_over)) 
+res_imp <- imputePCA(num_vars)
+imp_pctemployed16_over <- res_imp$completeObs[, "pctemployed16_over"]
+
+# Calculate the quantiles for validation
+quantiles_test <- quantile(test$pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_imp <- quantile(imp_pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = FALSE)
+
+plot(seq(0, 1, 0.1), quantiles_test, type = "l", col = "blue", lwd = 2,
+     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
+lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
+legend("topright", legend = c("pctemployed16_over", "imp_pctemployed16_over"),
+       col = c("blue", "red"), lwd = 2)
+
+```
+
+### pctprivatecoveragealone
+
+Similarly, the variable pctprivatecoveragealone is better informed despite a quite high number of null values (253) and the imputePCA has been successful to preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the test data.
+
+```{r}
+
+num_vars <- test[sapply(test, is.numeric)]
+miss_ids <- which(is.na(test$pctprivatecoveragealone)) 
+res_imp <- imputePCA(num_vars)
+imp_pctprivatecoveragealone <- res_imp$completeObs[, "pctprivatecoveragealone"]
+
+# Calculate the quantiles for validation
+quantiles_test <- quantile(test$pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_imp <- quantile(imp_pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = FALSE)
+
+plot(seq(0, 1, 0.1), quantiles_test, type = "l", col = "blue", lwd = 2,
+     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
+lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
+legend("topright", legend = c("test$pctprivatecoveragealone", "imp_pctprivatecoveragealone"),
+       col = c("blue", "red"), lwd = 2)
 
 ```
 
 
 ## Profiling & Relationships
 
-
-### Numerical variables
+After imputation and removal of null values, we can proceed with profiling the target variable and assess if any variable contains serial correlation
 
 ```{r}
 
@@ -588,10 +645,10 @@ res_anal <- condes(test, num.var=3, proba=0.05)
 ### Categorical variables
 
 ```{r}
-
-res_anal2 <- catdes()
+res_anal2 <- catdes(test, num.var=1, proba=0.05)
 ```
 
+### Serial correlations
 
 
 ```{r}
