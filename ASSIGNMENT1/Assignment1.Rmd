@@ -31,14 +31,15 @@ library(mice)
 library(FactoMineR)
 library(corrplot)
 library(VIM)
+
 ```
 
 # Define some functions to avoid repetition of same processes
 ```{r}
 calculate_outliers <- function(data) {
   # Check for regular outliers
+  boxplot(variable, main = "Boxplot")
   outliers <- boxplot.stats(data)$out
-  num_outliers <- length(outliers)
 
   # Calculate the lower and upper bounds for severe outliers
   Q1 <- quantile(data, 0.25, na.rm = TRUE)
@@ -47,14 +48,18 @@ calculate_outliers <- function(data) {
 
   lower_severe_bound <- Q1 - 3 * IQR
   upper_severe_bound <- Q3 + 3 * IQR
+  lower_mild_bound <- Q1 - 1.5 * IQR
+  upper_mild_bound <- Q3 + 1.5 * IQR
 
-  # Identify severe outliers
+  # Identify outliers
+  mild_outliers <- data[data < lower_mild_bound | data > upper_mild_bound]
   severe_outliers <- data[data < lower_severe_bound | data > upper_severe_bound]
+  num_mild_outliers <- length(mild_outliers)
   num_severe_outliers <- length(severe_outliers)
 
   # Return the results as a list
   return(list(
-    num_outliers = num_outliers,
+    num_outliers = num_mild_outliers,
     num_severe_outliers = num_severe_outliers
   ))
 }
@@ -66,18 +71,17 @@ summary_and_normality_check <- function(data) {
   
   # Plot normality 
   print("Mean")
-  mm <- mean(data); print(mm)
+  mm <- mean(data, na.rm = TRUE); print(mm)
   print("Standard deviation")
-  ss <- sd(data); print(ss)
+  ss <- sd(data, na.rm = TRUE); print(ss)
   hist(data,freq = F,100, main = "Histogram")
   curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
   
   #Compute skewness
   print("Skewness")
-  print(skewness(data))
+  print(skewness(data, na.rm = TRUE))
   
   #Number of outliers
-  print("Outliers: ")
   print(calculate_outliers(data))
   
   #Shapiro test
@@ -103,47 +107,17 @@ In this section, a descriptive analysis is conducted on each variable, a data qu
 
 ### Variable *avganncount*
 
-*avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." The difference between the mean (623.2) and the median (175) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (80 and 509, respectively) are much lower than the mean of 623.2 and the maximum value of 38150.0, further suggesting skewness. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 273 outliers, and 224 of these are severe outliers.
+*avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." The difference between the mean (623.2) and the median (175) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (80 and 509, respectively) are much lower than the mean of 623.2 and the maximum value of 38150.0, further suggesting skewness. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 333 outliers, and 257 of these are severe outliers.
 
-The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation. This variable has no missing values. Lastly, the skeweness indicator and Shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
-
--- anna -- 
-In this variable there are 126  values = "1962.667684" we should consider these as NA 
-
-```{r}
-variable <- train$avganncount
-summary <- summary(variable); summary
-
-variable[variable == 453.5494221] <- NA
-summary <- summary(variable); summary
-
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-boxplot(variable, main = "Boxplot")
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-shapiro.test(variable)
-
-calculate_outliers(variable)
-```
+In this variable there are 126  values = "1962.667684" that considered as NA . Lastly, the skeweness indicator and Shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
 
 
 ```{r}
 variable <- train$avganncount
-summary <- summary(train$avganncount); summary
-mm <- mean(train$avganncount)
-ss <- sd(train$avganncount)
-range <- (summary[[6]] - summary[[1]]); range
-boxplot(train$avganncount, main= "Boxplot")
-hist(train$avganncount,freq = F,30, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-skewness(train$avganncount)
-shapiro.test(train$avganncount)
 
-calculate_outliers(train$avganncount)
-
+ll1 <- which(variable == 1962.667684 ); length(ll1)
+variable[variable == 1962.667684 ] <- NA
+res.var <- summary_and_normality_check(variable)
 
 ```
 
@@ -154,20 +128,8 @@ In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mea
 It has no missing values. The difference between the mean (191.6) and median (62) indicates that the distribution is not symmetric. Moreover, the first and third quartiles (29 and 140.5, respectivelly) are lower than the mean and the maximum value of 14010, further suggesting a skewed ditribution. With the help of graphical tools like the boxplot we can confirm the skeweness, obtaining 225 outliers (138 of which are severe), indicating a large right tail. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation, and the Shapiro test also confirms the non-normality of the variable. 
 
 ```{r}
-
 variable <- train$avgdeathsperyear;
-summary <- summary(variable);summary
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-boxplot(variable, main = "Boxplot")
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-skewness(variable)
-shapiro.test(variable)
-
-calculate_outliers(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *target_deathrate* :
@@ -179,22 +141,8 @@ We performed the Shapiro test to check for the normality of the data, and obtain
 Moreover, it contains 35 outliers, 1 of which is a severe.  
 
 ```{r}
-
 variable <- train$target_deathrate;
-summary <- summary(variable); summary
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-boxplot(variable, main = "Boxplot")
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-
-skewness(variable)
-shapiro.test(variable)
-
-calculate_outliers(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *incidencerate* : 
@@ -203,31 +151,14 @@ Variable *incidencerate* is a numerical variable that expresses "Mean per capita
 
 The variable has no missing values. It has similar mean (449) and median (453.5) values given its range and suggesting a simmetry distribution. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
 
--- anna -- 
 In this variable there are 126  values = "453.5494221" we should consider these as NA (same rows as avganncount variable) 
 
 ```{r}
 
 variable <- train$incidencerate;
-summary <- summary(variable); summary
-
-variable[variable == 453.5494221] <- NA
-summary <- summary(variable); summary 
-
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-train[889,"geography"]
-train[168, "geography"]
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-
-skewness(variable)
-shapiro.test(variable)
-
-calculate_outliers(variable)
+ll1 <- which(variable == 453.5494221 ); length(ll1)
+variable[variable == 453.5494221 ] <- NA
+res.var <- summary_and_normality_check(variable)
 
 ```
 
@@ -238,22 +169,8 @@ Variable *medincome* is a numerical variable that expresses the "Median income p
 Thanks to the histogram, Shapiro test, and skeweness value, we see how the distribution is neither Normal nor symmetric, but it is skewed with a long right tail. It has 69 outliers, 15 of them severe. The highest value is for Loudoun County, Virginia. There are no missing values in this variable. 
 
 ```{r}
-
 variable <- train$medincome;
-summary <- summary(variable); summary
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-train$geography[128] # Virginia
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-
-skewness(variable)
-shapiro.test(variable)
-calculate_outliers(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *popest2015* :
@@ -266,21 +183,8 @@ The large difference between the mean (106.841) and median (27.158), along with 
 ```{r}
 
 variable <- train$popest2015;
-summary <- summary(variable); summary
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-train$geography[600]
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-skewness(variable)
-shapiro.test(variable)
-calculate_outliers(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
-
 
 
 ### Variable *povertypercent* : 
@@ -290,20 +194,8 @@ Variable *povertypercent* is a numerical variable that expresses the percent of 
 Similarly to other variables, it has a skewed distribution with a larger right tail. It has 42 outliers, but none of them is severe. The p-value obtained in the shapiro_test confirms the rejection of the null hypothesis, concluding that the variable does not have a normal distribution. 
 
 ```{r}
-
 variable <- train$povertypercent;
-summary <- summary(variable); summary
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-skewness(variable)
-shapiro.test(variable)
-calculate_outliers(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 
@@ -315,28 +207,14 @@ It contains no missing values, and has 307 outliers (222 severe). Its distributi
 
 
 ```{r}
-
 variable <- train$studypercap;
-summary <- summary(variable); summary
-length(variable[variable==0])
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-calculate_outliers(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 
 ### Variable *binnedi* : I CONSIDER IT IS WORTH TO REMOVE
 
-Variable *binnedi* is a categorical variable (or factor) that expresses the median income per capita binned by decile. The variable 
-
--- anna -- I'll remove the variable if we require precision or need the full detail of income differences but
-if we want to compare groups maybe is useful to keep it. 
+Variable *binnedi* is a categorical variable (or factor) that expresses the median income per capita binned by decile.  
 
 
 ```{r}
@@ -359,22 +237,7 @@ The variable has no missing values. Has 65 outliers, 18 of which are severe outl
 
 ```{r}
 variable <- train$medianage
-summary <- summary(variable) ; summary
-calculate_outliers(variable)
-variable[variable > 80] <- NA  # Replace values greater than 80 with NA
-summary <- summary(variable) ; summary
-
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss) ,col="red", lwd = 2, add=T)
-
-calculate_outliers(variable)
-shapiro.test(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 
@@ -386,19 +249,7 @@ There are no missing values and it has 46 outliers, non of them several outliers
 
 ```{r}
 variable <- train$medianagemale
-summary <- summary(variable) ; summary
-sum(is.nan(variable))
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-calculate_outliers(variable)
-shapiro.test(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *medianagefemale* : I AM NOT SURE IF IT'S WORTH IT TO SEPARATE THE MEDIANAGE WITH SEX
@@ -411,18 +262,7 @@ It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing t
 
 ```{r}
 variable <- train$medianagefemale
-summary <- summary(variable) ; summary
-sum(is.nan(variable))
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-calculate_outliers(variable)
-shapiro.test(variable)
+res.var <- summary_and_normality_check(variable)
 ```
 
 
@@ -450,19 +290,7 @@ It has a non-symmetric distribution, it is skewed with a long left tail observed
 
 ```{r}
 variable <- train$percentmarried
-summary <- summary(variable) ; summary
-sum(is.nan(variable))
-mm <- mean(variable)
-ss <- sd(variable)
-range <- (summary[[6]] - summary[[1]]); range
-Boxplot(variable, main = "Boxplot")
-
-hist(variable,freq = F,100, main = "Histogram")
-curve(dnorm(x, mean = mm, sd = ss),col="red", lwd = 2, add=T)
-
-calculate_outliers(variable)
-shapiro.test(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *pctnohs18_24* 
@@ -472,19 +300,8 @@ Numerical variable that show the percentage of county residents aged 18-24 whose
 The distribution of this variable is skewed with a long right tail, we can confirm that it doesn't have a normal distribution thanks to the histogram and the curve. Moreover the p-value obtained in the shapiro-test confirm the non normal distribution. It doesn't have misssing values, and it has 35 outliers, 5 of them severe. 
 
 ```{r}
-
 variable <- train$pctnohs18_24
-summary <- summary(variable); summary
-mm <- mean(variable)
-ss <- sd(variable)
-
-Boxplot(variable, main="Boxplot")
-hist(variable , freq=F, 100, main="Histogram")
-curve(dnorm(x,mean=mm,sd=ss),col='red', lwd=2, add = T)
-
-calculate_outliers(variable)
-shapiro.test(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *ppcths18_24* 
@@ -494,18 +311,7 @@ Numeric variable, it represent the percentage of county residents ages 18-24 hig
 We can observe with the median(34,7%) and the mean(35%) that the variable has a symmetric distribuition, but after the shapiro_test we observe that it doesn't have a normal distribution. It doesn't have missing values and it has 33 outliers, non of them severe. 
 ```{r}
 variable <- train$pcths18_24
-
-summary <- summary(variable); summary
-mm <- mean(variable)
-ss <- sd(variable)
-
-Boxplot(variable, main="Boxplot")
-hist(variable , freq=F, 100, main="Histogram")
-curve(dnorm(x,mean=mm,sd=ss),col='red', lwd=2, add = T)
-
-calculate_outliers(variable)
-shapiro.test(variable)
-
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *pctsomecol18_24* NOT WORTH TO USE IT (75% MISSING VALUES)
@@ -513,11 +319,20 @@ shapiro.test(variable)
 Numerical variable. Percent of county residents ages 18-24 highest education attained some college. 
 
 It has 1375 missing values. (75%) therefore we would remove this variable. 
-
+We could obtain the values knowing that pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pctbachdeg18_24 = 100
 
 ```{r}
 variable <- train$pctsomecol18_24
-summary <- summary(variable); summary
+res.var <- summary_and_normality_check(variable)
+
+```
+### Variable *pctbachdeg18_24* 
+
+Numerical variable. Percent of county residents ages 18-24 highest education attained is a bachelor's degree. There are no missing values, it has 56 mild outliers 10 of them severes. After the shapiro-test we can reject the null hypothesis, thus it doesn't have a normal distribution. 
+
+```{r}
+variable <- train$pctbachdeg18_24
+res.var <- summary_and_normality_check(variable)
 
 ```
 
@@ -528,17 +343,7 @@ Numerical variable that express the percentage of county residents ages 25 and o
 It doesn't have missing values but it have 18 outliers, non of the severe. It doesn't have a normal distribution.
 ```{r}
 variable <- train$pcths25_over
-summary <- summary(variable); summary
-mm <- mean(variable)
-ss <- sd(variable)
-
-Boxplot(variable, main="Boxplot")
-hist(variable , freq=F, 100, main="Histogram")
-curve(dnorm(x,mean=mm,sd=ss),col='red', lwd=2, add = T)
-skewness(variable)
-
-calculate_outliers(variable)
-shapiro.test(variable)
+res.var <- summary_and_normality_check(variable)
 ```
 
 ### Variable *pctachdeg25_over*
@@ -560,7 +365,7 @@ This variable contains over 82 NA values and has a slight right skewness and 11 
 
 
 ```{r}
-summary_and_normality_check(na.omit(train$pctemployed16_over))
+summary_and_normality_check(train$pctemployed16_over)
 
 ```
 
@@ -591,7 +396,7 @@ Numerical variable that represents the percentage of county residents with priva
 The number of NA is humongous (356), but it has a small amount of mild outliers (4) and almost no skewness at all. Both using inferential and visualizations methods we cannot easily reject the hypothesis that this variable is not normal. So we can loosely say that is **normally** distributed.
 
 ```{r}
-summary_and_normality_check(na.omit(train$pctprivatecoveragealone))
+summary_and_normality_check(train$pctprivatecoveragealone)
 ```
 ### Variable *pctempprivcoverage*
 
@@ -600,7 +405,7 @@ Numerical variable that represents the percentage of county residents with emplo
 Despite the low number of outliers (7 mild), the absence of NA, the small left skewness and the median being almost equal to the mean, we should reject the null hypothesis that the distribution is normal with a 5% significance. However, with a smaller significance level than 2.5% we couldn't reject that this distribution is not normal. **Almost normal**
 
 ```{r}
-summary_and_normality_check(na.omit(train$pctempprivcoverage))
+summary_and_normality_check(train$pctempprivcoverage)
 ```
 ### Variable *pctpubliccoveragealone*
 
@@ -609,7 +414,7 @@ Numerical variable that represents the percent of county residents with governme
 This variable contains 21 mild outliers, a great left skewness and a long right tail. Performing an inferential test like shapiro we get a tiny p-value which makes us reject the hypothesis that the distribution is normal under any significance level.
 
 ```{r}
-summary_and_normality_check(na.omit(train$pctpubliccoveragealone))
+summary_and_normality_check(train$pctpubliccoveragealone)
 ```
 ### Variable *pctwhite* 
 
@@ -689,10 +494,7 @@ Per variable, count:
 
 
 ```{r}
-
-
 # Number of errors (including inconsistencies). TODO
-
 md.pattern(train, rotate.names=T)
 ```
 
@@ -702,18 +504,19 @@ On one hand, looking at the pattern, we can notice that there are 362 variables 
 |------|---------------------------------|
 |  1   | pctsomecol18_24: 1375 NA        |
 |  2   | pctprivatecoveragealone: 365 NA |
+|  4   | avganncount : 126 NA            |
+|  4   | incidencerate : 126 NA          |
 |  3   | pctemployed16_over: 82 NA       |
 
 On the other hand, the top 5 ranking for variables with the most amount of mild and severe outliers is: 
 
-
 | Rank | Mild Outliers          | Severe Outliers      |
 |------|------------------------|----------------------|
-| 1    | pctblack 323           | avganncount 224      |
-| 2    | studypercap 307        | studypercap 222      |
-| 3    | pctasian 305           | popest2015  162      |
-| 4    | pctotherrace 283       | avgdeathsperyear 138 |
-| 5    | avganncount 273        | pctasian         107 |
+| 1    | avganncount 333        | avganncount 257      |
+| 2    | pctblack 323           | studypercap 222      |
+| 3    | studypercap 307        | popest2015  162      |
+| 4    | pctasian 305           | avgdeathsperyear 138 |
+| 5    | pctotherrace 283       | pctasian         107 |
 
 
 
@@ -726,17 +529,18 @@ Per individuals, count:
 - Number of outliers
 - Identify individuals considered as multivariant outliers.
 
-
+There are 362 obs without NA in any variable, 1144 obs with 1 variable with a NA value, 305 obs with 2 NA values and 20 obs with 3 NA values along the 33 variables of the dataset. 
 ```{r}
-
 #Number of missing values
+na_counts <- rowSums(is.na(train))
+table(na_counts)
 
 #Number of errors
 
-#Number of outliers
+#Number of outliers per individual 
 
 #Identify individuals considered as multivariant outliers. TODO
-res_mout <- Moutlier(num_vars, quantile=0.975)
+res_mout <- Moutlier(train[,c()], quantile=0.975)
 
 ```
 
