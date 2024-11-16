@@ -58,10 +58,13 @@ calculate_outliers <- function(data) {
   num_mild_outliers <- length(mild_outliers)
   num_severe_outliers <- length(severe_outliers)
 
+  ll1 <- which(data < lower_mild_bound | data > upper_mild_bound)
+
   # Return the results as a list
   return(list(
     num_outliers = num_mild_outliers,
-    num_severe_outliers = num_severe_outliers
+    num_severe_outliers = num_severe_outliers,
+    outliers_indexes = ll1
   ))
 }
 
@@ -83,14 +86,21 @@ summary_and_normality_check <- function(data) {
   print(skewness(data, na.rm = TRUE))
   
   #Number of outliers
-  print(calculate_outliers(data))
+  out.res <- calculate_outliers(data)
+  print("Num Outliers:")
+  print(out.res$num_outliers)
+  print("Num. severe outliers:")
+  print(out.res$num_severe_outliers)
   
   #Shapiro test
   print("Shapiro test: ")
   print(shapiro.test(data))
 
+  return(out.res$outliers_indexes)
 }
 
+outliers_df <- train
+outliers_df[,] <- 0
 ```
 
 \newpage
@@ -115,11 +125,11 @@ In this variable there are 126  values = "1962.667684" that considered as NA . L
 
 ```{r}
 variable <- train$avganncount
-
 ll1 <- which(variable == 1962.667684 ); length(ll1)
 variable[variable == 1962.667684 ] <- NA
 res.var <- summary_and_normality_check(variable)
-
+outliers_df[res.var,"avganncount"] <- 1
+test <- which(outliers_df$avganncount == 1); length(test)
 ```
 
 ### Variable *avgdeathsperyear*
@@ -131,6 +141,7 @@ It has no missing values. The difference between the mean (191.6) and median (62
 ```{r}
 variable <- train$avgdeathsperyear;
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"avgdeathsperyear"] <- 1
 ```
 
 ### Variable *target_deathrate* :
@@ -144,6 +155,7 @@ Moreover, it contains 35 outliers, 1 of which is a severe.
 ```{r}
 variable <- train$target_deathrate;
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"target_deathrate"] <- 1
 ```
 
 ### Variable *incidencerate* : 
@@ -160,7 +172,7 @@ variable <- train$incidencerate;
 ll1 <- which(variable == 453.5494221 ); length(ll1)
 variable[variable == 453.5494221 ] <- NA
 res.var <- summary_and_normality_check(variable)
-
+outliers_df[res.var,"incidencerate"] <- 1
 ```
 
 ### Variable *medincome* :
@@ -172,6 +184,7 @@ Thanks to the histogram, Shapiro test, and skeweness value, we see how the distr
 ```{r}
 variable <- train$medincome;
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"medincome"] <- 1
 ```
 
 ### Variable *popest2015* :
@@ -185,6 +198,7 @@ The large difference between the mean (106.841) and median (27.158), along with 
 
 variable <- train$popest2015;
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"popest2015"] <- 1
 ```
 
 
@@ -197,6 +211,7 @@ Similarly to other variables, it has a skewed distribution with a larger right t
 ```{r}
 variable <- train$povertypercent;
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"povertypercent"] <- 1
 ```
 
 
@@ -210,6 +225,7 @@ It contains no missing values, and has 307 outliers (222 severe). Its distributi
 ```{r}
 variable <- train$studypercap;
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"studypercap"] <- 1
 ```
 
 
@@ -239,6 +255,7 @@ The variable has no missing values. Has 65 outliers, 18 of which are severe outl
 ```{r}
 variable <- train$medianage
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"medianage"] <- 1
 ```
 
 
@@ -251,6 +268,7 @@ There are no missing values and it has 46 outliers, non of them several outliers
 ```{r}
 variable <- train$medianagemale
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"medianagemale"] <- 1
 ```
 
 ### Variable *medianagefemale* : I AM NOT SURE IF IT'S WORTH IT TO SEPARATE THE MEDIANAGE WITH SEX
@@ -264,6 +282,7 @@ It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing t
 ```{r}
 variable <- train$medianagefemale
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"medianagefemale"] <- 1
 ```
 
 
@@ -292,6 +311,7 @@ It has a non-symmetric distribution, it is skewed with a long left tail observed
 ```{r}
 variable <- train$percentmarried
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"percentmarried"] <- 1
 ```
 
 ### Variable *pctnohs18_24* 
@@ -303,6 +323,7 @@ The distribution of this variable is skewed with a long right tail, we can confi
 ```{r}
 variable <- train$pctnohs18_24
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"pctnohs18_24"] <- 1
 ```
 
 ### Variable *ppcths18_24* 
@@ -313,6 +334,7 @@ We can observe with the median(34,7%) and the mean(35%) that the variable has a 
 ```{r}
 variable <- train$pcths18_24
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"pcths18_24"] <- 1
 ```
 
 ### Variable *pctsomecol18_24* NOT WORTH TO USE IT (75% MISSING VALUES)
@@ -325,7 +347,8 @@ We could obtain the values knowing that pctnohs18_24 + pcths18_24 + pctsomecol18
 ```{r}
 variable <- train$pctsomecol18_24
 res.var <- summary_and_normality_check(variable)
-
+outliers_df[res.var,"pctsomecol18_24"] <- 1
+test <- which(outliers_df$pctsomecol18_24 == 1); length(test)
 ```
 ### Variable *pctbachdeg18_24* 
 
@@ -334,7 +357,7 @@ Numerical variable. Percent of county residents ages 18-24 highest education att
 ```{r}
 variable <- train$pctbachdeg18_24
 res.var <- summary_and_normality_check(variable)
-
+outliers_df[res.var,"pctbachdeg18_24"] <- 1
 ```
 
 ### Variable *pcths25_over*
@@ -345,17 +368,20 @@ It doesn't have missing values but it have 18 outliers, non of the severe. It do
 ```{r}
 variable <- train$pcths25_over
 res.var <- summary_and_normality_check(variable)
+outliers_df[res.var,"pcths25_over"] <- 1
+test <- which(outliers_df$pcths25_over == 1); length(test)
 ```
 
-### Variable *pctachdeg25_over*
+### Variable *pctbachdeg25_over*
 
 Numerical variable that expresses the the percentage of country resident ages 25 and over highest education attained: Bachelor's degree. 
 
 Firstly we can see that there is a huge left skewness and there is a relatively large number of outliers (62), from which just 3 are severe. From the plot we can already tell that no normal distribution is followed and a shapiro test over the variable confirms it.
 
 ```{r}
-summary_and_normality_check(train$pctbachdeg25_over)
-
+res.var <- summary_and_normality_check(train$pctbachdeg25_over)
+outliers_df[res.var,"pctbachdeg25_over"] <- 1
+test <- which(outliers_df$pctbachdeg25_over == 1); length(test)
 ```
 
 ### Variable *pctemployed16_over*
@@ -366,8 +392,10 @@ This variable contains over 82 NA values and has a slight right skewness and 11 
 
 
 ```{r}
-summary_and_normality_check(train$pctemployed16_over)
-
+res.var <- summary_and_normality_check(train$pctemployed16_over)
+res.var
+outliers_df[res.var,"pctemployed16_over"] <- 1
+test <- which(outliers_df$pctemployed16_over == 1); length(test)
 ```
 
 ### Variable *pctunemployed16_over*
@@ -377,7 +405,9 @@ Numerical variable that represents the percentage of county residents ages 16 an
 This variable is heavily left skewed and contains over 46 outliers, of which 4 are severe. Despite the distrirbution looking almost normal there is a big number of outliers and a long heavy right tail. Applying a shapiro test we reject the hypothesis that the distribution is normal.
 
 ```{r}
-summary_and_normality_check(train$pctunemployed16_over)
+res.var <- summary_and_normality_check(train$pctunemployed16_over)
+outliers_df[res.var,"pctunemployed16_over"] <- 1
+test <- which(outliers_df$pctunemployed16_over == 1); length(test)
 ```
 
 ### Variable *pctprivatecoverage* 
@@ -387,7 +417,9 @@ Numerical variable that represents the percentage of county residents with priva
 Despite having no NA and just 17 mild outliers, this variable has a huge standard deviation and a right skewed mean. Applying a shapiro test we reject the hypothesis that the distribution is normal.
 
 ```{r}
-summary_and_normality_check(train$pctprivatecoverage)
+res.var <- summary_and_normality_check(train$pctprivatecoverage)
+outliers_df[res.var,"pctprivatecoverage"] <- 1
+test <- which(outliers_df$pctprivatecoverage == 1); length(test)
 ```
 
 ### Variable *pctprivatecoveragealone*
@@ -397,7 +429,10 @@ Numerical variable that represents the percentage of county residents with priva
 The number of NA is humongous (356), but it has a small amount of mild outliers (4) and almost no skewness at all. Both using inferential and visualizations methods we cannot easily reject the hypothesis that this variable is not normal. So we can loosely say that is **normally** distributed.
 
 ```{r}
-summary_and_normality_check(train$pctprivatecoveragealone)
+res.var <- summary_and_normality_check(train$pctprivatecoveragealone)
+res.var
+outliers_df[res.var,"pctprivatecoveragealone"] <- 1
+test <- which(outliers_df$pctprivatecoveragealonee == 1); length(test)
 ```
 ### Variable *pctempprivcoverage*
 
@@ -406,7 +441,8 @@ Numerical variable that represents the percentage of county residents with emplo
 Despite the low number of outliers (7 mild), the absence of NA, the small left skewness and the median being almost equal to the mean, we should reject the null hypothesis that the distribution is normal with a 5% significance. However, with a smaller significance level than 2.5% we couldn't reject that this distribution is not normal. **Almost normal**
 
 ```{r}
-summary_and_normality_check(train$pctempprivcoverage)
+res.var <- summary_and_normality_check(train$pctempprivcoverage)
+outliers_df[res.var,"pctempprivcoverage"] <- 1
 ```
 ### Variable *pctpubliccoveragealone*
 
@@ -415,7 +451,8 @@ Numerical variable that represents the percent of county residents with governme
 This variable contains 21 mild outliers, a great left skewness and a long right tail. Performing an inferential test like shapiro we get a tiny p-value which makes us reject the hypothesis that the distribution is normal under any significance level.
 
 ```{r}
-summary_and_normality_check(train$pctpubliccoveragealone)
+res.var <- summary_and_normality_check(train$pctpubliccoveragealone)
+outliers_df[res.var,"pctpubliccoveragealone"] <- 1
 ```
 ### Variable *pctwhite* 
 
@@ -427,7 +464,8 @@ This points out that the vast majority of counties have a high percentage of whi
 
 
 ```{r}
-summary_and_normality_check(train$pctwhite)
+res.var <- summary_and_normality_check(train$pctwhite)
+outliers_df[res.var,"pctwhite"] <- 1
 ```
 ### Variable *pctblack*
 
@@ -435,7 +473,8 @@ Numerical variable that represents the percent of county residents who identify 
 
 There is a huge number of outliers (323), from which  99 are severe and there is also a huge left skewness, that points out that the vast majority of counties (except the outliers) have a rather low percentage of black folks. The distribution almost looks like a power law distribution (Zipf) therefore we can safely reject both with visualization and inferential methods that the distribution of this variable is not normal.
 ```{r}
-summary_and_normality_check(train$pctblack)
+res.var <- summary_and_normality_check(train$pctblack)
+outliers_df[res.var,"pctblack"] <- 1
 ```
 ### Variable *pctasian*
 
@@ -444,7 +483,8 @@ Numerical variable that represents the percent of county residents who identify 
 Pretty similarly to the last distribution, we have a heavily left skewed zipfian like distribution, with 305 outliers (from which 107 are severe), pointing out that the vast majority of counties have less than 3% of asian percentage.
 
 ```{r}
-summary_and_normality_check(train$pctasian)
+res.var <- summary_and_normality_check(train$pctasian)
+outliers_df[res.var,"pctasian"] <- 1
 ```
 ### Variable *pctotherrace*
 
@@ -454,7 +494,8 @@ Again this variable, just like the last 2 presents a huge left skewness and zipf
 
 
 ```{r}
-summary_and_normality_check(train$pctotherrace)
+res.var <- summary_and_normality_check(train$pctotherrace)
+outliers_df[res.var,"pctotherrace"] <- 1
 ```
 ### Variable *pctmarriedhouseholds*
 
@@ -463,7 +504,8 @@ Numerical variable that represents the percent of married households.
 This variable contains 59 outliers from which 2 are severe and a noticeable left skewness. Visualization isn't that clear, but using inferential methods like shapiro test we reject the null hypothesis that this variable is normal. 
 
 ```{r}
-summary_and_normality_check(train$pctmarriedhouseholds)
+res.var <- summary_and_normality_check(train$pctmarriedhouseholds)
+outliers_df[res.var,"pctmarriedhouseholds"] <- 1
 ```
 
 ### Variable *birthrate*
@@ -472,9 +514,9 @@ Numerical variable that represents the number of births relative to number of wo
 
 Finally, this last variable contains a fair amount of outliers (121) from which 17 are severe. It also has a fair amount of left skewness. Both from visualization and shapiro testing we reject that this sample variable is normal.
 ```{r}
-summary_and_normality_check(train$birthrate)
+res.var <- summary_and_normality_check(train$birthrate)
+outliers_df[res.var,"birthrate"] <- 1
 ```
-
 
 
 
@@ -530,19 +572,34 @@ Per individuals, count:
 - Number of outliers
 - Identify individuals considered as multivariant outliers.
 
-There are 362 obs without NA in any variable, 1144 obs with 1 variable with a NA value, 305 obs with 2 NA values and 20 obs with 3 NA values along the 33 variables of the dataset. 
+There are 362 obs without NA in any variable, 1144 obs with 1 variable with a NA value, 305 obs with 2 NA values and 20 obs with 3 NA values along the 33 variables of the dataset.
+
 ```{r}
 #Number of missing values
 na_counts <- rowSums(is.na(train))
 table(na_counts)
+```
 
-#Number of errors
-
+Out of all observations, 836 do not exhibit any outliers across the variables, while 451 observations contain a single outlier in one variable. Interestingly, there are 2 observations identified as outliers in 10 variables and another 2 observations that are outliers in 11 variables.
+```{r}
 #Number of outliers per individual 
+outliers_counts <- rowSums(outliers_df)
+table(outliers_counts)
+```
 
-#Identify individuals considered as multivariant outliers. TODO
-res_mout <- Moutlier(train[,c()], quantile=0.975)
 
+```{r}
+#Identify individuals considered as multivariant outliers.
+# FALTA TRIAR BE LO DELS OUTLIERS
+train$avgdeathsperyear <- as.numeric(train$avgdeathsperyear)
+train$medincome <- as.numeric(train$medincome)
+train$popest2015 <- as.numeric(train$popest2015)
+
+apply(train[, c(1,3,4,5,7,8,12,14:16, 19,20, 22, 23, 25,26,28,30:33)], 2, var)
+cor(train[,c(1,3,4,5,7,8,12,14:16, 19,20, 22, 23, 25,26,28,30:33)])
+
+
+res_mout <- Moutlier(train[,c(1,3,4,5,7,8,12,14:16, 19,20, 22, 23, 25,26,28,30:33)], quantile=0.975)
 ```
 
 Create a variable adding the total number of missing values, outliers and errors. Describe these variables, to which other variables exist higher associations.
