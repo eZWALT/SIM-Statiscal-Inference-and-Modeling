@@ -749,37 +749,92 @@ acf(train$target_deathrate)
 
 
 # Modeling (train data)
-## Model exploration and Multicollinearity study
+## Initial Model exploration and Multicollinearity study
 
-Firstly, it is important to realize that just as in past sections, the geography variable should just be used as a supplementary variable and not used for modelling purposes.
+Firstly, it is important to realize that just as in past sections, the geography variable should just be used as a supplementary variable and not used for modelling purposes. Two initial models are built, one with all the numeric variables, and a second one containing all the numeric variables + all categorical variables.
+
+Both models explain roughly 51% and 52% of variance respectively (R2), and both have multiple significant slope coeffcients such as percentmarried, pctbachdeg25_over, pctemployed16_over, pctotherrace, avganncount, incidencerate, avgdeathsperyear and binnedinc level 7 among the ones with smallest p-values. 
+
+Looking at variance over inflation of the first model, we can see that there are several variables that contain a great amount of variance over inflation, pointing out the presence of multicollinearity. The main ranked variables that exceed the high VIF threshold (10) in both models:
+
+1. avgdeathsperyear
+2. pctpubliccoverage 
+3. popest2015 
+4. pctprivatecoveragealone 
+5. pctprivatecoverage 
+6. pctpubliccooveragealone
+7. avganncount
+8. percentmarried
+9. binnedinc 
+
+Exploring the residual analysis plots of each model, a common trend is easily identified. Due to the presence of extreme outliers, both models do not meet the linear model premises at all:
+
+1. Residuals vs Fitted plots look like residuals are random and do not follow any pattern except for a couple of extreme outliers, which distort the straight line, therefore we cannot claim linearity.
+2. Q-Q Residuals suggest that the residuals almost follow a normal distribution (are random), despite a few outlier and heavier tails than usual, therefore we cannot fully claim normality.
+3. Scale-Location plots show a slight curvature due to the outlier values that points out a possible small heteroscedasticity.
+4. Residuals vs Leverage confirms that despite almost all points have a quite low leverage, there are a small amount of highly leveraged points that distort the model in general (Specially observation 600).
 
 ```{r}
 
 
-# Mixed (Categorical + numerical)
-m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + binnedinc, data=train)
+m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=train)
 
 summary(m1)
 vif(m1)
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(m1, id.n=0)
 
-# Only numeric variables model
-m2 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate , data=train)
+# Mixed (Categorical + numerical)
+m2 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + binnedinc, data=train)
 
 summary(m2)
-
 vif(m2)
-
-
-# TO DO: encara falta molt aqui just he començat
+plot(m2)
 ```
 
+Following up, we will build m3, a modification of m2 removing some inflating variables (avgdeathsperyear, pctprivatecoveragealone, pctpubliccoveragealone, binnedinc, percentmarried, medianagefemale, medianagemale) which some of then are redundant. This is one approach for addressing multicollinearity in the model, another strategy could be to perform a dimensionality reduction technique like PCA. The results we get from this variable removal is a model with all the independent variables having a less than 10 VIF (However, we still have variables that are above 5 VIF like avganncount, popest2015...), yet still retaining over 50 R-squared. However, the residual analysis results are pretty much the same as in the past 2 models with minor improvements. Outliers keep distorting the model heavily. Anova nested model test confirms that is worth using the lighter model.
 
-## Model transformations
 
 ```{r}
 
-#Include Code
+m3 <- lm(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
+vif(m3)
+summary(m3)
+plot(m3)
 
+#anova(m3, m2)
+```
+
+One further improvement for a following model would be to remove variables with high VIF and high p-value in the coefficient tests, like popest2015 or avganncount. Another possible improvement would be to retain binnedinc instead of its redundant counterpart medincome. 
+
+
+```{r}
+library(effects)
+plot(allEffects(m3))
+
+```
+
+## Model transformations
+
+Possibly we need to perform some transformations...
+```{r}
+#Exemple random ;)
+boxcox(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
+
+#boxTidwell(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
+```
+
+## Influential data study 
+
+Given that the models are being quite negatively affected by influential data, an study of the aforementioned will be performed to address this issue.
+```{r}
+#Include Code
+```
+
+## Further model exploration
+
+```{r}
+#Include Code
 ```
 
 ## Model validation
