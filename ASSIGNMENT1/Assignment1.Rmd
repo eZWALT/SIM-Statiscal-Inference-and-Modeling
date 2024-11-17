@@ -3,11 +3,11 @@ title: 'Assignment1: CancerMortality'
 author: "Joan Acero, Anna Monsó, Walter Troiani"
 date: "2024-10-21"
 output:
+  pdf_document:
+    toc: true
   html_document:
     toc: true
     df_print: paged
-  pdf_document:
-    toc: true
 editor_options:
   chunk_output_type: console
 ---
@@ -129,7 +129,7 @@ ll1 <- which(variable == 1962.667684 ); length(ll1)
 variable[variable == 1962.667684 ] <- NA
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"avganncount"] <- 1
-test <- which(outliers_df$avganncount == 1); length(test)
+outliers <- which(outliers_df$avganncount == 1); length(outliers)
 ```
 
 ### Variable *avgdeathsperyear*
@@ -348,7 +348,7 @@ We could obtain the values knowing that pctnohs18_24 + pcths18_24 + pctsomecol18
 variable <- train$pctsomecol18_24
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctsomecol18_24"] <- 1
-test <- which(outliers_df$pctsomecol18_24 == 1); length(test)
+outliers <- which(outliers_df$pctsomecol18_24 == 1); length(outliers)
 ```
 ### Variable *pctbachdeg18_24* 
 
@@ -369,7 +369,7 @@ It doesn't have missing values but it have 18 outliers, non of the severe. It do
 variable <- train$pcths25_over
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pcths25_over"] <- 1
-test <- which(outliers_df$pcths25_over == 1); length(test)
+outliers <- which(outliers_df$pcths25_over == 1); length(outliers)
 ```
 
 ### Variable *pctbachdeg25_over*
@@ -381,7 +381,7 @@ Firstly we can see that there is a huge left skewness and there is a relatively 
 ```{r}
 res.var <- summary_and_normality_check(train$pctbachdeg25_over)
 outliers_df[res.var,"pctbachdeg25_over"] <- 1
-test <- which(outliers_df$pctbachdeg25_over == 1); length(test)
+outliers <- which(outliers_df$pctbachdeg25_over == 1); length(outliers)
 ```
 
 ### Variable *pctemployed16_over*
@@ -395,7 +395,7 @@ This variable contains over 82 NA values and has a slight right skewness and 11 
 res.var <- summary_and_normality_check(train$pctemployed16_over)
 res.var
 outliers_df[res.var,"pctemployed16_over"] <- 1
-test <- which(outliers_df$pctemployed16_over == 1); length(test)
+outliers <- which(outliers_df$pctemployed16_over == 1); length(outliers)
 ```
 
 ### Variable *pctunemployed16_over*
@@ -407,7 +407,7 @@ This variable is heavily left skewed and contains over 46 outliers, of which 4 a
 ```{r}
 res.var <- summary_and_normality_check(train$pctunemployed16_over)
 outliers_df[res.var,"pctunemployed16_over"] <- 1
-test <- which(outliers_df$pctunemployed16_over == 1); length(test)
+outliers <- which(outliers_df$pctunemployed16_over == 1); length(outliers)
 ```
 
 ### Variable *pctprivatecoverage* 
@@ -419,7 +419,7 @@ Despite having no NA and just 17 mild outliers, this variable has a huge standar
 ```{r}
 res.var <- summary_and_normality_check(train$pctprivatecoverage)
 outliers_df[res.var,"pctprivatecoverage"] <- 1
-test <- which(outliers_df$pctprivatecoverage == 1); length(test)
+outliers <- which(outliers_df$pctprivatecoverage == 1); length(outliers)
 ```
 
 ### Variable *pctprivatecoveragealone*
@@ -432,7 +432,7 @@ The number of NA is humongous (356), but it has a small amount of mild outliers 
 res.var <- summary_and_normality_check(train$pctprivatecoveragealone)
 res.var
 outliers_df[res.var,"pctprivatecoveragealone"] <- 1
-test <- which(outliers_df$pctprivatecoveragealonee == 1); length(test)
+outliers <- which(outliers_df$pctprivatecoveragealonee == 1); length(outliers)
 ```
 ### Variable *pctempprivcoverage*
 
@@ -588,31 +588,49 @@ table(outliers_counts)
 ```
 
 
+Considering over 20 numerical variables that contain few correlated variables and considering a 1% significance level, 209 multivariate outliers are found in the dataset.
 ```{r}
 #Identify individuals considered as multivariant outliers.
-# FALTA TRIAR BE LO DELS OUTLIERS
 train$avgdeathsperyear <- as.numeric(train$avgdeathsperyear)
 train$medincome <- as.numeric(train$medincome)
 train$popest2015 <- as.numeric(train$popest2015)
 
-apply(train[, c(1,3,4,5,7,8,12,14:16, 19,20, 22, 23, 25,26,28,30:33)], 2, var)
-cor(train[,c(1,3,4,5,7,8,12,14:16, 19,20, 22, 23, 25,26,28,30:33)])
+#Compute multivariant outliers and find their ids (24)
+subset_num_vars <- c(1,2,3:7,10:12,14:16, 18:20, 22,23, 25:33)
+res_mout <- Moutlier(train[,subset_num_vars], quantile=0.97, plot=T)
+mout_ids <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff))
 
-
-res_mout <- Moutlier(train[,c(1,3,4,5,7,8,12,14:16, 19,20, 22, 23, 25,26,28,30:33)], quantile=0.975)
+#Reset graphical parameters and plot the outliers
+dev.off()
+plot(x=res_mout$md, y=res_mout$rd, main="Classic Mahalanobis D vs Robust Mahalanobis D (M. Outliers)", col="blue")
+abline(v=res_mout$cutoff, col="red")
+abline(h=res_mout$cutoff, col="red")
 ```
 
-Create a variable adding the total number of missing values, outliers and errors. Describe these variables, to which other variables exist higher associations.
+We can clearly see that for the number of outliers variable, the mean is around 1.39, and the third quantile around 2.0, however, we have a high standard devation of 1.935 pointing out at the presence of outliers in the number of outliers variable, suggesting there are several individuals with more than 2 outlier variables. This variable contains somewhat high correlation with pcths25_over, pchwhite, pctasian and other weak correlations.
 
-- Compute the correlation with all other variables. Rank these variables according the correlation
-- Compute for every group of individuals the mean of missing/outliers/error values. Rank those groups according the computed mean. 
+The number of missing values doesn't make much sense to be analyzed after removing 2 of the main problematic columns which contained several null values.
+
+Finally, looking at the multivariate factor profiling, we see that there is a global association between "mout" and "binnedinc", and we can see that there is a huge global association with quantitative variables pctotherrace and n_uout (Logically, the number of univariate outliers contributes to a possible multivariate outlier individual), followed by medianage looking at their eta squared values. Finally, we see looking at the mean values of the quantitative variables that in the case of an individual that is not a multivariate outlier, almost every single variable mean value is equal or close to the overall mean. However in the case of multivariate outliers we see huge discrepancies in the mean of pctasian, pctotherrace, n_out, popest2015, avgdeathsperyear and avganncount, which are way higher than the overall mean value. This may point out that the asian-otherrace populations and those with higher poulation or more average deaths per year, are more prone to be multivariate outliers. 
+
 
 ```{r}
+anal_df <- train
+#Binary factor if its a  multivariate outlier
+anal_df$mout <- 0 
+anal_df[mout_ids, "mout"] <- 1
+anal_df$mout <- factor(anal_df$mout, labels=c("Not M.O", "Yes M.O"))
+#Number of univariate outlier variables for a given observation
+anal_df$n_uout <- rowSums(outliers_df)
+#Number of missing values in variables for a given observation 
+anal_df$n_miss <- rowSums(is.na(train))
 
-#Include Code
+summary(anal_df[, c("mout", "n_uout", "n_miss")]); sd(anal_df$n_uout); sd(anal_df$n_miss)
+num_vars <- anal_df[sapply(anal_df, is.numeric)]
+corrplot(cor(num_vars))
 
+catdes(anal_df, num.var=34, proba=0.05)
 ```
-
 
 ## Imputation
 
@@ -620,116 +638,141 @@ Create a variable adding the total number of missing values, outliers and errors
 
 Given the huge amount of null values, the impute PCA has not been able to replicate the original distribution of this messy variable. 
 ```{r}
-num_vars <- test[sapply(test, is.numeric)]
-miss_ids <- which(is.na(test$pctsomecol18_24)) 
+num_vars <- train[sapply(train, is.numeric)]
+miss_ids <- which(is.na(train$pctsomecol18_24)) 
 res_imp <- imputePCA(num_vars)
 imp_pctsomecol <- res_imp$completeObs[, "pctsomecol18_24"]
 
 # Calculate the quantiles for validation
-quantiles_test <- quantile(test$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_train <- quantile(train$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
 quantiles_imp <- quantile(imp_pctsomecol, probs = seq(0, 1, 0.1), na.rm = FALSE)
 
-plot(seq(0, 1, 0.1), quantiles_test, type = "l", col = "blue", lwd = 2,
+plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
      xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
 lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
-legend("topright", legend = c("test$pctsomecol18_24", "imp_pctsomecol"),
+legend("topright", legend = c("train$pctsomecol18_24", "imp_pctsomecol"),
        col = c("blue", "red"), lwd = 2)
+
+
+#We won't impute the values!
+train[miss_ids, "pctsomecol18_24"] <- imp_pctsomecol[miss_ids]
 ```
 
 ### pctemployed16_over 
 
-pctemployed16_over only contains 70 null values and the imputePCA function has been able of almost perfectly preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the test data.
+pctemployed16_over only contains 70 null values and the imputePCA function has been able of almost perfectly preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the train data.
 
 ```{r}
 
-num_vars <- test[sapply(test, is.numeric)]
-miss_ids <- which(is.na(test$pctemployed16_over)) 
+num_vars <- train[sapply(train, is.numeric)]
+miss_ids <- which(is.na(train$pctemployed16_over)) 
 res_imp <- imputePCA(num_vars)
 imp_pctemployed16_over <- res_imp$completeObs[, "pctemployed16_over"]
 
 # Calculate the quantiles for validation
-quantiles_test <- quantile(test$pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_train <- quantile(train$pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = TRUE)
 quantiles_imp <- quantile(imp_pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = FALSE)
 
-plot(seq(0, 1, 0.1), quantiles_test, type = "l", col = "blue", lwd = 2,
+plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
      xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
 lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
 legend("topright", legend = c("pctemployed16_over", "imp_pctemployed16_over"),
        col = c("blue", "red"), lwd = 2)
 
+train[miss_ids, "pctemployed16_over"] <- imp_pctemployed16_over[miss_ids]
 ```
 
 ### pctprivatecoveragealone
 
-Similarly, the variable pctprivatecoveragealone is better informed despite a quite high number of null values (253) and the imputePCA has been successful to preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the test data.
+Similarly, the variable pctprivatecoveragealone is better informed despite a quite high number of null values (253) and the imputePCA has been successful to preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the train data.
 
 ```{r}
 
-num_vars <- test[sapply(test, is.numeric)]
-miss_ids <- which(is.na(test$pctprivatecoveragealone)) 
+num_vars <- train[sapply(train, is.numeric)]
+miss_ids <- which(is.na(train$pctprivatecoveragealone)) 
 res_imp <- imputePCA(num_vars)
 imp_pctprivatecoveragealone <- res_imp$completeObs[, "pctprivatecoveragealone"]
 
 # Calculate the quantiles for validation
-quantiles_test <- quantile(test$pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_train <- quantile(train$pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = TRUE)
 quantiles_imp <- quantile(imp_pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = FALSE)
 
-plot(seq(0, 1, 0.1), quantiles_test, type = "l", col = "blue", lwd = 2,
+plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
      xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
 lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
-legend("topright", legend = c("test$pctprivatecoveragealone", "imp_pctprivatecoveragealone"),
+legend("topright", legend = c("train$pctprivatecoveragealone", "imp_pctprivatecoveragealone"),
        col = c("blue", "red"), lwd = 2)
+
+train[miss_ids, "pctprivatecoveragealone"] <- imp_pctprivatecoveragealone[miss_ids]
 
 ```
 
 
 ## Profiling & Relationships
 
-After imputation and removal of null values, we can proceed with profiling the target variable and assess if any variable contains serial correlation
+After imputation and removal of null values, we can proceed with profiling the target variable and assess if any variable contains serial correlation.
+
+TODO: explicar correlacions.... (Cuidado, no cal explicar les correlacions de target_deathrate, ja estan just al apartat d'abaix!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
 
 ```{r}
 
-names(test)
-num_vars <- test[sapply(test, is.numeric)]
-cat_vars <- test[!sapply(test, is.numeric)]
+names(train)
+num_vars <- train[sapply(train, is.numeric)]
+cat_vars <- train[!sapply(train, is.numeric)]
 corrplot(cor(num_vars))
 ```
 
-```{r}
-res_anal <- condes(test, num.var=3, proba=0.05)
-```
+For some unexpected reason the geography categorical variable causes some unexpected problems to arise, therefore we won't use it at all. If you take a closer look at the profiling of this target variable you will realize that there is a high linkage between the target and the qualitative variable binnedinc performing a oneway anova test. If you take a look at the mean values for different values of binnedinc, you will see that those incomes which are below 40K have a higher deathrate (The lower the binned income the higher the deathrate). Conversely, the higher the binned income the lower the deathrate. Finally, taking a glance at the quantitative variables, we see that there is a medium-high positive correlation with pctpubliccoveragealone, povertypercent, pctpubliccoverage, pcths25_over and pctunemployed16_over. Looking at the inverse, we see a medium-high inverse correlation with variables medincome,  pctbachdeg25_over and pctprivatecoverage and pctmarriedhouseholds. 
 
-### Categorical variables
 
 ```{r}
-res_anal2 <- catdes(test, num.var=1, proba=0.05)
+subset_num <- c(1,2,3:7,10:12,14:16, 18:20, 22,23, 25:33)
+subset_cat <- c(9)
+subset_train <- c(subset_num, subset_cat)
+
+res_anal <- condes(train[, subset_train], num.var=3, proba=0.01)
+res_anal
 ```
 
 ### Serial correlations
 
+It has been found previously that the target_variable doesn't follow a normal distribution at all, now its clear looking at the auto correlation function plot below that this variable contains serial correlation. To address this issue we will 
 
 ```{r}
+library(stats)
+acf(train$target_deathrate)
 
-#Include Code
-
+ids <- sample(1:nrow(train), nrow(train))
+train <- train[ids, ]
+acf(train$target_deathrate)
 ```
 
 
-# Modeling (TRAIN DATA)
+# Modeling (train data)
+## Model exploration and Multicollinearity study
+
+Firstly, it is important to realize that just as in past sections, the geography variable should just be used as a supplementary variable and not used for modelling purposes.
 
 ```{r}
 
-#Include Code
 
+# Mixed (Categorical + numerical)
+m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + binnedinc, data=train)
+
+summary(m1)
+vif(m1)
+
+# Only numeric variables model
+m2 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate , data=train)
+
+summary(m2)
+
+vif(m2)
+
+
+# TO DO: encara falta molt aqui just he començat
 ```
 
-## Model exploration and multicollinearity study
-
-```{r}
-
-#Include Code
-
-```
 
 ## Model transformations
 
@@ -753,7 +796,7 @@ We will analyze the residuals to ensure that model assumptions are met and use R
 
 ## Model evaluation
 
-Finally we will evaluate how well the model performs with unseen data (test split) to assess its forecasting capabilities, using the same R-squared performance metric.
+Finally we will evaluate how well the model performs with unseen data (train split) to assess its forecasting capabilities, using the same R-squared performance metric.
 
 ```{r}
 
