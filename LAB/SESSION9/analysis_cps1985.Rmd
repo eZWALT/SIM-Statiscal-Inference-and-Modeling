@@ -1,0 +1,154 @@
+---
+title: "CPS1985 Analysis"
+author: "Walter J.T.V"
+date: "2024-11-11"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# CPS 1985 analysis example
+
+## Load the data 
+
+```{r}
+library(AER)
+library(car)
+library(FactoMineR)
+library(chemometrics)
+library(MASS)
+
+data("CPS1985")
+
+df <- CPS1985
+
+summary(df)
+```
+
+# LAB 9
+
+## Categorical exploration
+
+We will dive deep into using categorical variables with linear models, which affect the intercept. Each categorical variable with K levels, creates K-1 dummy variables. We can represent it with 1 long equation or K-1 equations like the following:
+
+3 equations for race:
+
+caucasic: log(y) = 
+hispanic: log(y) = 
+other:    log(y) = 
+
+```{r}
+#Binary variable gender (both male and female have the same equation but females have -0.2519 less intercept)
+
+m51 <- lm(log(wage) ~ education + age + I(age^2) + gender, data=df)
+summary(df$gender)
+summary(m51)
+
+# Now we add a polytomous factor (multiple levels) ethnicity
+m52 <- lm(log(wage) ~ education + age + I(age^2) + ethnicity, data=df)
+summary(m52)
+#To visualize dummy variables / factors
+?model.matrix
+head(model.matrix(m52))
+
+# Lets mix 2 factors (Additive)
+m53 <- lm(log(wage) ~ education + age + I(age^2) + gender + ethnicity, data=df) 
+summary(m53)
+head(model.matrix(m53))
+```
+
+Looking at R^2 improvements is not enough at all, we need inferential methods like parameter t-testing (B_i = 0?)
+
+P-values of parameter inferential methods for polytomous variables like ethnicity is not correct, because a variable (ethnicity) has multiple levels, we need to perform a fisher test. Depending on the level of signficance. In this example the p-value is 0.069, with a 5% significance level we cannot reject H0 that both models are equivalent or do the same functionality.
+
+H0: both models are equivalent
+HA: both models are different
+
+Therefore anova is useful for assessing if categorical variables are worth it. Capital Anova tests net (once the rest of the variables are added in the model, is it worth to add this one?) effects for each single variable. Looking at the gender anova test we see that its worth to keep that variable.**WITHOUT INTERACTIONS!!!!!!!!**
+
+```{r}
+
+anova(m51, m53)
+
+library(car)
+Anova(m53)
+```
+
+## Interaction between factors
+
++: Main effects 
+*: Main effects + interactions (cartesian product, all the combinations of the 2 variables)
+
+In our example we have 2 factors, gender and ethnicity. Using the * operator we are going to expand the dummy variables up to 6 (male, caucasian), (male, hispanic), (male, other), (female, caucasian)...
+
+We got to take both factors and the 2 interactions into account
+
+```{r}
+m53 <- lm(log(wage) ~ education + age + I(age^2) + gender * ethnicity, data=df) 
+
+```
+
+
+
+```{r}
+
+m60 <- lm(log(wage) ~ education * ethnicity, data=df)
+head(model.matrix(m60))
+#To assess if the linear equations of each race is similar or not
+scatterplot(log(wage) ~ education | ethnicity, data=df, smooth=F)
+
+library(effects)
+plot(allEffects(m60))
+summary(m60)
+
+Anova(m60)
+```
+
+
+## Final model
+
+Comparing the best numerical only model and add categorical variables. We will use akaike and fisher test to get the best possible model, and then we will add interactions.
+
+
+```{r}
+m5 <- lm(formula = log(wage) ~ education + poly(age, 2) + ethnicity + 
+    region + gender + occupation + sector + union + union + married, 
+    data = df)
+
+
+#Lets use a fisher test, where we see that the married net effect is not significant
+Anova(m5)
+#Alternative procedure
+m6 <- step(m5)
+
+#Add interactions
+m7 <- lm(formula = log(wage) ~ (education + poly(age, 2)) * (ethnicity + 
+    region + gender + occupation + sector + union ), 
+    data = df)
+
+#really complex model
+summary(m7)
+
+#we priorize stepwise method for simplifying this huge ass model, stepwise BIC-based. Keep interaction between education - sector
+m8 <- step(m7, k=log(nrow(df)))
+
+#Comparing the models: they are not equivalent
+anova(m8, m7)
+```
+
+
+STEPWISE REGRESSION: it minimizes a statistic named AIC or BIC to find the best model (Bayesian information criteria).
+
+
+TOOLS for model exploration: 
+- 
+
+
+STRATEGY FOR SIMPLIFYING MODEL COMPLEXITY: (Reducing number of levels grouping them)
+```{r}
+
+df$secto
+
+
+```
+

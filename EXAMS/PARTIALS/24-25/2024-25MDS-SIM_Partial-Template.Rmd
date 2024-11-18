@@ -1,0 +1,274 @@
+---
+title: "24-25-SIM-Midterm Template"
+author: "Lídia Montero"
+date: "November, 4th 2024"
+output: 
+  pdf_document: 
+    toc: true
+    toc_depth: 3
+    number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Mobile Price Prediction Dataset
+
+*Load mobiles.RData file in your current R or RStudio session. Selected numeric target is Price and let company be the qualitative target. Prepare your dataset to represent factors in a suitable way.*
+
+
+```{r,echo=FALSE}
+options(contrasts=c("contr.treatment","contr.treatment"))
+if(!is.null(dev.list())) dev.off()
+rm(list = ls())
+
+```
+
+**All questions account for 1 point (you have to answer all of them)**
+
+# Load dataset and define factors
+
+```{r,echo=FALSE}
+
+load("mobiles.RData")
+#options(contrasts=c("contr.treatment","contr.treatment"))
+
+df$brand <- factor(df$brand)
+df$company <- factor(df$company)
+df$id <- NULL
+summary(df)
+```
+
+**All questions account for 1 point (you have to answer all of them)**
+
+**1.	Determine thresholds for mild and severe outliers in the target. How many mild and severe outliers  are found? Indicate observation id’s. Does the proportion of severe outliers depend on the company? *Remove those devices with prices above 200,000$*.**
+
+The thresholds can be found below and there are over 29 mild outliers and 7 are severe, however there is a set of increidible expensive devices which are over inflating the analysis. Performing a small analysis using FactoMineR condes, we can clearly see that there is a huge global association with both categorical variables brand (0.98 R2) and company (0.32 R2). Looking at particular individuals we can see that values of brand such as Iphone XR or samsung galaxy S10 have a bigger mean estimate value of price compared to other brands outside of apple. Additionally, we see that this variable has a  moderate correlation with the Ratings, RAM, ROM and Battery_Power, while it has a weak negative correlation with Primary_cam.
+
+Additionally, looking at the companies of the outliers we can clearly see that the severe ones are almost always either Apple or Samsung, followed by a few exceptions. We observe the similar trend in mild outliers.
+
+
+```{r}
+library(FactoMineR)
+Q3 <- quantile(df$Price, 0.75)
+Q1 <- quantile(df$Price, 0.25)
+IQR <- Q3 - Q1 
+
+mild_up <- Q3 + 1.5*IQR 
+mild_bot <- Q1 - 1.5*IQR 
+sev_up <- Q3 + 3*IQR
+sev_bot <- Q1 - 3*IQR 
+
+boxplot(df$Price)
+abline(h=mild_up, col="green")
+abline(h=sev_up, col="red")
+
+sev_ids <- which((df$Price > sev_up) | (df$Price < sev_bot))
+mild_ids <- which(((df$Price > mild_up) & (df$Price < sev_up)) | ((df$Price < mild_bot) & (df$Price > sev_bot)))
+
+df[sev_ids, "company"]
+df[mild_ids, "company"]
+
+names(df)
+condes(df, num.var = 10)
+
+expns_ids <- which(df$Price > 200000)
+df = df[-expns_ids, ] 
+```
+
+
+**2. Use an imputation method to address missing data in the dataset. Validate imputation results. *Retain all imputed values*.**
+
+Firstly, we can see in the correlation matrix that the correlations between variables are pretty weak, being Price ~ Ratings 0.36 the biggest among them, followed by battery_power and ratings. We will remove the ids to perform PCA imputation. After performing an imputation and comparing the quantiles before and after, we can see that in some extreme cases like Selfi_Cam, the values have slightly incremented but the distribution is still almost the same. Similarly, other variables that contain NA like RAM or ROM also have tiny differences but can be ultimately considered neglibible, therefore we will proceed with the imputated data.
+
+```{r}
+summary(df)
+library(corrplot)
+library(missMDA)
+num_vars <- df[sapply(df, is.numeric)]
+cat_vars <- df[!sapply(df, is.numeric)]
+
+corrplot(cor(na.omit(num_vars)))
+
+res_imp <- imputePCA(num_vars)
+imp_vals <- res_imp$completeObs
+
+
+names(num_vars)
+
+
+sapply(df, summary)
+na_positions <- is.na(num_vars)
+num_vars[na_positions] <- imp_vals[na_positions]
+df[sapply(df, is.numeric)] <- num_vars
+sapply(df, summary)
+
+summary(df)
+```
+
+
+**3. Are there multivariate outliers in the dataset? Indicate how many and which at 99% confidence. Explain what they seem to share in common. Do not take any action.**
+
+There are 51 multivariant outliers and they all same to share a similar structure, the company and brand is Apple, the ratings are atleast 1 point bigger, and there is a huge difference in mean price.
+
+```{r}
+library(chemometrics)
+num_vars <- df[sapply(df, is.numeric)]
+num_vars$Primary_Cam <- NULL
+num_vars$Ratings <- NULL
+num_vars$Mobile_Size <- NULL
+num_vars$RAM <- NULL
+num_vars
+
+corrplot(cor(num_vars))
+
+names(num_vars)
+res_mout <- Moutlier(num_vars, quantile=0.99)
+
+plot(x=res_mout$md, y=res_mout$rd, main="Classic Mahalanobis vs Robust")
+abline(v=res_mout$cutoff, col="red")
+abline(h=res_mout$cutoff, col="red")
+
+mout_ids <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff))
+mout_ids
+
+summary(df[mout_ids, ])
+summary(df[-mout_ids,])
+```
+
+
+**4. Analyze the profile of the numeric target (Price) using a suitable profiling method. A detailed explanation of the procedure outcome is requested.**
+
+Firsyly, we see that Ratings and Price variable have a quite high correlation, followed by ROM,  Battery power and RAM. There is also some weak inverse relaton with Primary_cam and Selfi_Cam. It is already said in previous sections but the brand and company categorical values have a big global association with this variable. Delving deeper into companies, we can see that Apple has a huge estimate mean value of +73847.527 and other companies like samsung (19836) and OnePlus (28178) have estimated lower values. There is also the lower side of the spectrum such as Oppo(8366) and Xiaomi(10928).
+
+```{r}
+
+
+names(df)
+condes(df, num.var=10)
+```
+
+
+**5. Analyze the profile of the qualitative target (company) using a suitable method. A detailed explanation of the procedure outcome is requested. Focus on Ratings only in the explanation of numeric details.**
+
+
+Looking the results we can clearly see that company and brand have a perfect association on the chi-squared test, therefore the variables are not indepedent as it would be naturally expected. The qualitative variables which this factor has the highest global associations are mainly Ratings and Price, followed by the rest. Looking at the ratings we can clearly see a pattern that more expensive and known (Most importantly!) companies like Apple/Honor/Xiaomi perform better than the average rating (4.1), and less known companies as Hicell,Ikall, Inovu...
+
+```{r}
+
+names(df)
+res_cat <- catdes(df, num.var=2)
+
+res_cat$test.chi2
+```
+
+
+**6. Is there variance homogeneity in the Price target groups defined by company classes? Indicate the 4 companyies having the largest Price dispersion.**
+
+Looking at the inferential normality assessment method Shapiro test we can completely discard that the distribution of price is normal, therefore fligner test will be suited better for this purpose. 
+
+Both using fligner test and performing visual analytics with boxplots we can clearly see that there is no variance homogenity in this sample at all, with a tiny p-value of 2.2e-16. We can also see that there are companies with no variance at all, and others with huge ones: Apple, LG, Samsung and Xiaomi in that descending order.
+
+```{r}
+
+shapiro.test(df$Price)
+fligner.test(df$Price, df$company)
+
+library(car)
+Boxplot(df$Price ~ df$company)
+
+sort(tapply(df$Price, df$company, var))
+sort(tapply(df$Price, df$company, sd))
+```
+
+
+**7.	Mean Price can be considered to be the equal across groups defined by company factor? Use a two.sided test at 1% significance level and indicate the confidence interval for the particular case of Apple devices population mean. Indicate whether equal variances and normal distribution of Price hypothesis hold in the population.**
+
+Given that the distribution of price is not normal, we need to use a non-parametric test as Kruskal. Simiarly, the mean of the different groups are extremely unlikely to be equal, with a tiny pvalue too. Therefore we reject it. We cannot use the equal variances assumption, therefore we will need to perform a wilcox.test instead of a t.test:
+
+The given interval of the mean is (68060, 104300), which seems absolutely likely looking at the sample mean being 86542.
+
+
+```{r}
+
+?kruskal.test
+kruskal.test(df$Price, df$company)
+
+?wilcox.test
+apples <- df[which(df$company == "Apple"), ]
+mean(apples$Price)
+wilcox.test(apples$Price, paired=F, conf.level=0.99, alternative="two.sided", conf.int=T)
+
+```
+
+**8.	State and test one.sided hypothesis to assess whether Price is less for Xiaomi than the rest at 1% significance level. Indicate and justify a 95% two-sided confidence interval for Xiaomi population mean.**
+
+Using a one-sided wilcox.test we can see that the true mean of Xiaomi is extremely likely to be greater than the whole population mean, therefore we reject that xiaomi mean is less. Also looking at the sample mean we can clearly see its way above. Using a two-sided 95% confidence test we get that the following confidence interval: (18999, 21999), which is still above the global mean 14k.
+
+```{r}
+sort(tapply(df$Price, df$company, mean))
+global_mean <- mean(df$Price); global_mean
+xiaomi <- df[which(df$company == "Xiaomi"), ]
+wilcox.test(xiaomi$Price, mu=global_mean, paired=F, alternative="greater", conf.level=0.99)
+wilcox.test(xiaomi$Price, mu=global_mean, paired=F, conf.level=0.95, conf.int=T)
+
+pairwise.wilcox.test(df$Price, df$company, conf.level=0.99)
+
+```
+
+
+**9.	The standard deviation of Price in the Xiaomi company should not exceed 25,000$. For the sample in the Xiaomi devices in your dataset, calculate the standard deviation of Price assuming that normal assumption holds. State and include any assumptions needed to test at the 1% significance level whether population standard deviation is larger than 1 in the xiaomi group. Figure out the 99% upper threshold for Price in the xiaomi population standard deviation.**
+
+Assuming normality,we can make use of varTest, which at any given confidence level we cannot reject the null hypothesis that the standard deviation should be equal than 25000$. The sample standard deviation is actually 21259.82$, and the upper bound of the confidence interval at 99% confidence (in terms of standard deviation and not variance) is 28560. The lower bound given by the other one-sided test is 16848.12
+
+
+```{r}
+sort(tapply(df$Price, df$company, sd))
+sugma <- 25000 * 25000
+library(EnvStats)
+varTest(xiaomi$Price, conf.level=0.95, sigma.squared=sugma)
+sd(xiaomi$Price)
+
+varTest(xiaomi$Price, conf.level=0.99, sigma.squared=sugma, alternative="greater")
+varTest(xiaomi$Price, conf.level=0.99, sigma.squared=sugma, alternative="less")
+
+sqrt(815691534)
+sqrt(283859166)
+
+```
+
+
+**10.	Determine a 99% confidence interval for the population proportion of Apple devices, assuming that a representative sample of the smartphone market is available. Test the null hypothesis that selecting a Apple device has a population probability greater than 0.25.**
+
+Apple has 34 individuals, which is almost 4.4% of the population. The 99 confidence interval using a proportion test gives us the interval (2.97%, 6.9%). Performing 2 one-sided tests we see that we can reject that the proportion of apple is equal to 25%, and then we know by its alterantive hypothesis that this sample is below and the population is extremely likely.
+
+H0: prop(apple) = 0.25 
+H1: prop(apple) > 0.25
+
+
+
+```{r}
+
+tt <- table(df$company)
+tt
+prop.table(tt)
+
+prop.test(x=c(34), n=c(761), p=0.25, conf.level=0.99, alternative="greater")
+prop.test(x=c(34), n=c(761), p=0.25, conf.level=0.99, alternative="less")
+
+?prop.test
+
+
+```
+
+
+**11.	Test the null hypothesis that the proportion of Apple devices and the population proportion of Xiaomi devices is the same at 1% significance level.**
+
+We can clearly see that at a any significance level, proportions are not the same
+
+```{r}
+
+prop.test(x=c(34, 41), n=c(761, 761), p=c(0.5, 0.5), conf.level = 0.99)
+
+```
+
+**Do not forget to knit your .Rmd file to .pdf (or to word and afterwards to pdf) before posting it on the ATENEA platform task (only for pdf). Markdown should be also posted in the corresponding task.**
