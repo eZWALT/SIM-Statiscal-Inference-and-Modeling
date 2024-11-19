@@ -656,7 +656,29 @@ legend("topright", legend = c("train$pctsomecol18_24", "imp_pctsomecol"),
 
 #We won't impute the values!
 train[miss_ids, "pctsomecol18_24"] <- imp_pctsomecol[miss_ids]
+
+# --- op2 -- 
+summary(train$pctsomecol18_24)
+imp_values <- 100 - train$pctnohs18_24[miss_ids] - train$pcths18_24[miss_ids] - train$pctbachdeg18_24[miss_ids]
+pct2 <- train$pctsomecol18_24
+pct2[miss_ids] <- imp_values
+
+
+quantiles_2 <- quantile(pct2, probs = seq(0,1,0.1), na.rm = FALSE)
+summary(pct2)
+
+plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
+     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
+
+lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2); 
+lines(seq(0, 1, 0.1), quantiles_2, col = "green", lwd = 2); 
+legend("topright", legend = c("train$pctsomecol18_24", "imp_pctsomecol","imputation2"),
+       col = c("blue", "red","green"), lwd = 2)
+
+# add imputated values
+train$pctsomecol18_24 <- pct2
 ```
+
 
 ### pctemployed16_over 
 
