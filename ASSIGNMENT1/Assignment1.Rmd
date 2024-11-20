@@ -13,13 +13,36 @@ editor_options:
 ---
 
 
+\newpage
+
+# Introduction
+
+This report documents the process and results of the Modeling Assignment for the Statistical Modeling and Inference course. The primary aim of this project is to analyze the Cancer Mortality dataset and build an accurate and interpretable linear model to predict target_deathrate, which represents the average cancer mortality rate per 100,000 individuals.
+
+The project begins with data preparation and exploratory analysis, focusing on cleaning and enhancing the dataset to ensure its quality. This involves generating a Data Quality Report, identifying and handling missing values through imputation, and analyzing variable distributions and relationships. Univariate descriptive analysis is performed to examine each variable’s characteristics.
+
+The second stage involves modeling using the training dataset, where several key analyses are conducted to optimize the model:
+
+- Initial model exploration addresses potential issues such as multicollinearity and the contribution of each predictor.
+- Model transformations are applied to improve variable relationships and address non-linearity.
+- An influential data study identifies and evaluates the impact of unusual observations on the model.
+- The model is further refined through validation and diagnostics, ensuring it adheres to key assumptions like normality, homoscedasticity, and independence.
+
+Finally, the evaluation process assesses the model’s generalization performance on the test dataset, providing insights into its predictive capabilities. A detailed interpretation of the model results is presented, highlighting how the predictors influence the target variable and their practical implications for understanding cancer mortality trends.
+
+This report follows a systematic and methodical approach to ensure the development of a reliable model.
+
+
 \newpage 
 
-# Load the dataset and required libraries
+# First Steps
+
+Load the dataset and required libraries
 ```{r}
 
 rm(list=ls())
-knitr::opts_chunk$set(fig.align='center', out.width='50%') # Manage output plots width and align
+# Manage output plots width and align
+knitr::opts_chunk$set(fig.align='center', out.width='50%') 
 
 train <- read.csv("train.csv")
 test <- read.csv("test.csv")
@@ -35,7 +58,7 @@ library(VIM)
 
 ```
 
-# Define some functions to avoid repetition of same processes
+Define some functions to avoid repetition of same processes
 ```{r}
 calculate_outliers <- function(data) {
   # Check for regular outliers
@@ -102,9 +125,10 @@ outliers_df <- train
 outliers_df[,] <- 0
 ```
 
+
 \newpage
 
-# Data Preparation & Analysis
+# Data Preparation & Exploratory Analysis
 
 In this section, a descriptive analysis is conducted on each variable, a data quality report is generated, and imputation and profiling are addressed.
 
@@ -860,7 +884,7 @@ plot(allEffects(m3))
 Possibly we need to perform some transformations...
 ```{r}
 #Exemple random ;)
-boxcox(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
+#boxcox(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
 
 #boxTidwell(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
 ```
