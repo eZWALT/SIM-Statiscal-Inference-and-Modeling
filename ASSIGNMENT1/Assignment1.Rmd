@@ -59,7 +59,7 @@ library(VIM)
 ```
 
 Define some functions to avoid repetition of same processes
-```{r}
+```{r eval = TRUE}
 calculate_outliers <- function(data) {
   # Check for regular outliers
   boxplot(variable, main = "Boxplot")
