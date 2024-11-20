@@ -39,7 +39,7 @@ This report follows a systematic and methodical approach to ensure the developme
 
 Load the dataset and required libraries
 ```{r}
-
+knitr::opts_chunk$set(eval = FALSE)
 rm(list=ls())
 # Manage output plots width and align
 knitr::opts_chunk$set(fig.align='center', out.width='50%') 
