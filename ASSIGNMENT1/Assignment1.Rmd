@@ -52,7 +52,7 @@ knitr::opts_chunk$set(
 )
 rm(list=ls())
 
-train <- read.csv("train.csv")
+df <- read.csv("train.csv")
 test <- read.csv("test.csv")
 
 library(moments)
@@ -69,7 +69,7 @@ library(VIM)
 ```{r eval = TRUE}
 calculate_outliers <- function(data) {
   # Check for regular outliers
-  boxplot(variable, main = "Boxplot")
+  Boxplot(variable, main = "Boxplot")
   outliers <- boxplot.stats(data)$out
 
   varsumm <- summary(data)
@@ -124,23 +124,33 @@ summary_and_normality_check <- function(data) {
   #Shapiro test
   print("Shapiro test: ")
   print(shapiro.test(data))
+  
+  # Most repeated value: 
+  freq_table <- table(variable)
+  most_repeated_value <- names(freq_table)[which.max(freq_table)]; most_repeated_value
+  most_repeated_count <- max(freq_table); most_repeated_count
+  print("Most repeated value ad times it occurs: ")
+  print(most_repeated_value)
+  print(most_repeated_count)
 
   return(out.res$outliers_indexes)
 }
 
-outliers_df <- train
+outliers_df <- df
 outliers_df[,] <- 0
 ```
 
 
 \newpage
 
-# Data Preparation & Exploratory Analysis
+# Explanatory Data Analysis
 
-In this section, we undertake a crucial step in any data science project, particularly for modeling purposes. A detailed descriptive analysis is performed on each variable, highlighting their most relevant characteristics. Following a column-by-column examination of the dataset, we generate a data quality report and prepare the data for the subsequent modeling stage by addressing missing values through imputation methods.
+In this section, we undertake a crucial step in any data science project, particularly for modeling purposes. A detailed descriptive analysis is performed on each variable, highlighting their most relevant characteristics. We follow a column-by-column examination of the dataset, and then generate a data quality report and prepare the data for the subsequent modeling stage by addressing missing values through imputation methods, and deleting non-informative variables and creating new ones.
+
+Note that the explanatory data analysis is assessed using exclusively the train data, even though new variables and variable removals also impact the test dataset.
 
 
-## Univariate Descriptive Analysis & Data quality
+## Univariate Descriptive Analysis & Data Quality Report
 
 In this initial phase, we analyze all variables in the dataset, highlighting their most significant characteristics. We also convert numeric variables that represent qualitative concepts into factors and consider creating new variables based on existing numeric ones.
 
@@ -149,58 +159,62 @@ Subsequently, we present a data quality report that assesses the overall quality
 
 ### Variable *avganncount*
 
-*avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." The difference between the mean (623.2) and the median (175) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (80 and 509, respectively) are much lower than the mean of 623.2 and the maximum value of 38150.0, further suggesting skewness. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 333 outliers, and 257 of these are severe outliers.
+*avganncount* is a numerical variable representing the "Mean number of reported cancer cases diagnosed annually (2010-2015)." First, note that it contains 126 observations with the value "1962.667684", which we consider inconsistent and that represent NAs. After setting this individuals as NAs, we start the variable analysis.
 
-In this variable there are 126  values = "1962.667684" that considered as NA . Lastly, the skeweness indicator and Shapiro test rejection of the null hypothesis also confirm the non-normal distribution of the variable. 
+The difference between the mean (524.24) and the median (155) indicates that the distribution is not symmetric and deviates from normality. Additionally, the first and third quartiles (74 and 383, respectively) are much lower than the mean and the maximum value of 38150, further suggesting skewness. As expected, the Shapiro-Wilk normality test gets rejected. The boxplot confirms this skewness, with an extended upper whisker and numerous outliers, indicating a heavy right tail. It has 207 mild outliers and 131 severe outliers.
 
--- op 2 -- 207 mild / 131 severe
 ```{r}
-variable <- train$avganncount
+variable <- df$avganncount
 ll1 <- which(variable == 1962.667684 ); length(ll1)
 variable[variable == 1962.667684 ] <- NA
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"avganncount"] <- 1
 outliers <- which(outliers_df$avganncount == 1); length(outliers)
+
 ```
 
 ### Variable *avgdeathsperyear*
 
-In a similar way, *avgdeathsperyear* is a numerical variable expressing the "Mean number of reported mortalities due to cancer".
+*avgdeathsperyear* is a numerical variable representing the "Average number of reported cancer-related mortalities per year."
 
-It has no missing values. The difference between the mean (191.6) and median (62) indicates that the distribution is not symmetric. Moreover, the first and third quartiles (29 and 140.5, respectivelly) are lower than the mean and the maximum value of 14010, further suggesting a skewed ditribution. With the help of graphical tools like the boxplot we can confirm the skeweness, obtaining 225 outliers (138 of which are severe), indicating a large right tail. The histogram overlaid with a normal curve highlights the deviation from a normal distribution with the same mean and standard deviation, and the Shapiro test also confirms the non-normality of the variable. 
+This variable is complete, with no missing values. Descriptive statistics reveal a mean of 191.6 and a median of 62, indicating a strongly non-symmetric distribution. This asymmetry is further supported by the first quartile (29) and third quartile (140.5), both significantly lower than the mean, suggesting a right-skewed distribution. Visual exploration using a boxplot confirms this skewness, displaying a pronounced right tail.
+
+Additionally, a histogram with an overlaid normal curve underscores the substantial deviation from normality, a conclusion reinforced by the results of the Shapiro-Wilk test. The distribution exhibits a significant number of outliers, with 225 classified as mild and 138 as severe, all of which are above the third quartile. These outliers contribute to the variable’s extended right tail and may warrant further investigation to understand their context and potential implications.
+
 
 ```{r}
-variable <- train$avgdeathsperyear;
+variable <- df$avgdeathsperyear
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"avgdeathsperyear"] <- 1
 ```
 
 ### Variable *target_deathrate* :
 
-Variable *target_deathrate* is a numerical variable that is the target of the model. It contains no missing values in the train sample. The median (178.3) and mean (178.8) values are really close, expressing the symmetry of the distribution of the variable. Thanks to the boxplot and the histogram we can graphically confirm the symmetry of the distribution. 
+*target_deathrate* is the numeric target variable of the dataset. While a more detailed analysis will be presented in subsequent sections, we introduce key insights regarding its distribution, missing values, and outliers here.
 
-We performed the Shapiro test to check for the normality of the data, and obtained a small p-value that rejects the null hypothesis, indicating that the variable does not follow a normal distribution. Therefore, the target variable is not normally distributed. 
+The target variable is complete in the training sample, with no missing values. The median (178.3) and mean (178.8) are nearly identical, suggesting a symmetric distribution. This symmetry is further supported by visual inspections of the boxplot and histogram, both of which confirm the balanced nature of the data around its center.
 
-Moreover, it contains 35 outliers, 1 of which is a severe.  
+To evaluate normality, we performed the Shapiro-Wilk test. The resulting small p-value rejected the null hypothesis, indicating that the distribution deviates from normality despite its apparent symmetry. Thus, the target variable is not normally distributed.
 
+In terms of outliers, the variable contains 35 observations classified as outliers, including one severe case.
 ```{r}
-variable <- train$target_deathrate;
+variable <- df$target_deathrate;
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"target_deathrate"] <- 1
 ```
 
 ### Variable *incidencerate* : 
 
-Variable *incidencerate* is a numerical variable that expresses "Mean per capita (100,000) cancer diagnoses". 
+*incidencerate* is a numerical variable representing the "Mean per capita cancer diagnosis rate per 100,000 individuals."
 
-The variable has no missing values. It has similar mean (449) and median (453.5) values given its range and suggesting a simmetry distribution. It contains 60 outliers, 7 of which are severe outliers. In the boxplot we can see how the most severe outliers are high and not low values, corresponding to Osceola County, Florida and Williamsburg city, Virginia. The histogram with the overlapping normal distribution shows a quite symmetrical distribution, but the Shapiro test and skeweness value discard the normality of the variable's distribution.
+Anomalies were identified in the data: the same 126 individuals who had a value of "1962.667684" in the *avganncount* variable also showed a value of "453.5494221" in the *incidencerate* variable. These values are considered non-coherent, and thus, we set them as missing (NA). After setting these values to NA, we proceed with the analysis of the column’s distribution.
 
-In this variable there are 126  values = "453.5494221" we should consider these as NA (same rows as avganncount variable) 
+The mean of the variable is 448.7, the median is 448.7, and the standard deviation is 57.85, indicating moderate variability in the data. The skewness of 1.40 suggests a positively skewed distribution, with the tail extending toward higher values. This is further confirmed by the presence of 36 outliers, including 4 severe outliers, which are all above the upper threshold. The Shapiro-Wilk strongly rejects the null hypothesis of normality. 
 
-op2 -- 36 outliers / 4 severe
+These results suggest that while the variable is mostly symmetric within its central range, the skewness and presence of outliers may have implications for modeling and analysis. 
+
 ```{r}
-
-variable <- train$incidencerate;
+variable <- df$incidencerate;
 ll1 <- which(variable == 453.5494221 ); length(ll1)
 variable[variable == 453.5494221 ] <- NA
 res.var <- summary_and_normality_check(variable)
@@ -209,26 +223,24 @@ outliers_df[res.var,"incidencerate"] <- 1
 
 ### Variable *medincome* :
 
-Variable *medincome* is a numerical variable that expresses the "Median income per county".
-
-Thanks to the histogram, Shapiro test, and skeweness value, we see how the distribution is neither Normal nor symmetric, but it is skewed with a long right tail. It has 69 outliers, 15 of them severe. The highest value is for Loudoun County, Virginia. There are no missing values in this variable. 
+*medincome* is a numerical variable representing the "Median income per county." 
+The distribution is neither normal nor symmetric, as evidenced by the histogram, Shapiro-Wilk test, and skewness value (1.47), all indicating a right-skewed distribution with a long tail. Descriptive statistics show a minimum of 22,640, a maximum of 122,641 (Loudoun County, Virginia), and a mean of 47,278 with a standard deviation of 12,342. The median income is 45,454, with the first and third quartiles at 39.031 and 52.612, respectively. There are no missing values, but the variable contains 69 outliers, 15 of which are severe, all above the upper quartile. These findings suggest substantial variability and a pronounced concentration of counties with lower incomes compared to a smaller group with exceptionally high incomes.
 
 ```{r}
-variable <- train$medincome;
+variable <- df$medincome;
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"medincome"] <- 1
 ```
 
 ### Variable *popest2015* :
 
-Variable *popest2015* is a numerical variable that expresses the population of the county.
+*popest2015* is a numerical variable representing the population of each county in 2015. 
 
-It does not count with missing values. It has a long range and is highly skewed, with a long right tail. In fact, it contains 252 outliers, 162 of which are severe, and all of them are above the upper whisker in the boxplot. The highest value is for Los Angeles County, California. 
-The large difference between the mean (106.841) and median (27.158), along with the spread between the 1st (12.191) and 3rd quartiles (66.880), indicates a positively skewed distribution, where extreme high values are pulling the mean upward.
+It contains no missing values but has an extensive range and an extremely skewed distribution, as highlighted by a skewness value of 14.71 and a Shapiro-Wilk test confirming strong deviation from normality. The distribution is heavily right-skewed, with a mean of 106,841 significantly exceeding the median of 27,158, and a wide spread between the 1st quartile (12,191) and 3rd quartile (66,880). The variable includes 252 mild outliers and 162 severe outliers, all exceeding the upper whisker of the boxplot. The highest value, 10,170,292, corresponds to Los Angeles County, California. The standard deviation of 376,494 reflects the substantial variability, driven by a small number of extremely populous counties. This skewed distribution highlights the vast disparity in county populations, with most counties having smaller populations and a few extreme outliers significantly influencing the overall statistics.
 
 ```{r}
 
-variable <- train$popest2015;
+variable <- df$popest2015;
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"popest2015"] <- 1
 ```
@@ -236,27 +248,29 @@ outliers_df[res.var,"popest2015"] <- 1
 
 ### Variable *povertypercent* : 
 
-Variable *povertypercent* is a numerical variable that expresses the percent of population in poverty and has no missing values.
+*povertypercent* is a numerical variable representing the percentage of the population in poverty. It has no missing values and a moderate positive skew, as indicated by the skewness value of 0.89 and the Shapiro-Wilk test, confirming the variable does not follow a normal distribution. The mean is 16.79, slightly higher than the median of 15.7, reflecting the slight skew. The 1st quartile (12.15) and 3rd quartile (20.4) show a moderate spread, with values ranging from a minimum of 3.7 to a maximum of 44. The standard deviation is 6.41, indicating variability in poverty levels across counties.
 
-Similarly to other variables, it has a skewed distribution with a larger right tail. It has 42 outliers, but none of them is severe. The p-value obtained in the shapiro_test confirms the rejection of the null hypothesis, concluding that the variable does not have a normal distribution. 
+The variable has 42 mild outliers, but no severe ones. The most frequent value is 14.7, occurring 22 times. While this variable shares a non-normal distribution with other numerical variables like medincome and incidencerate, its skewness and outlier characteristics are less pronounced, indicating a more balanced distribution overall. 
 
 ```{r}
-variable <- train$povertypercent;
+variable <- df$povertypercent;
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"povertypercent"] <- 1
 ```
 
+### Variable *studypercap* :
 
-### Variable *studypercap* : I CONSIDER IT IS WORTH TO REMOVE
+*studypercap* is a numerical variable representing the "Per capita number of cancer-related clinical trials per county." 
 
-Variable *studypercap* is a numerical variable that expresses "Per capita number of cancer-related clinical trials per county".
+A significant feature of this variable is that 1,162 out of 1,831 counties (63.5%) have a value of 0, making this the most frequent value and dominating the distribution. Nearly all non-zero values are flagged as outliers due to their extreme deviation from the majority, with 307 identified as mild outliers, and 222 severe ones. 
 
-It contains no missing values, and has 307 outliers (222 severe). Its distribution is non-symmetric. Note that 1162 out of 1831 observations contain value 0 in this variable, which indicates that it may only provide noise to the model. **Thus, we consider it is worth to remove the variable. **
+Given the predominance of zero values and the highly skewed nature, this variable may contribute more noise than predictive value to the model. **Removing it from both the training and test datasets is a reasonable decision to simplify the model and enhance its performance.**
 
 
 ```{r}
-variable <- train$studypercap;
+variable <- df$studypercap;
 res.var <- summary_and_normality_check(variable)
+
 outliers_df[res.var,"studypercap"] <- 1
 ```
 
@@ -268,7 +282,7 @@ Variable *binnedi* is a categorical variable (or factor) that expresses the medi
 
 ```{r}
 
-variable <- train$binnedinc;
+variable <- df$binnedinc;
 summary <- summary(variable); summary
 table(variable)
 prop.table(table(variable))
@@ -285,7 +299,7 @@ The variable has no missing values. Has 65 outliers, 18 of which are severe outl
 
 
 ```{r}
-variable <- train$medianage
+variable <- df$medianage
 table(variable)
 variable[variable > 70 ] <- NA
 table(variable)
@@ -301,7 +315,7 @@ Numeric variable, represents the mean age of the male population of each county.
 There are no missing values and it has 46 outliers, non of them several outliers. The mean is 39.59 yo and the median 39.50yo what suggest a simmetry distribution. After looking at the results of the shapiro-test it doesn't have a normal distribution 
 
 ```{r}
-variable <- train$medianagemale
+variable <- df$medianagemale
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"medianagemale"] <- 1
 ```
@@ -312,7 +326,7 @@ The medianagefemale is a numerical variable that analyze the median age of the f
 It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing the results of the Shapiro-test we observe that does not have a normal distribution. There are 55 outliers none of them severe 
 
 ```{r  eval = TRUE}
-variable <- train$medianagefemale
+variable <- df$medianagefemale
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"medianagefemale"] <- 1
 ```
@@ -327,7 +341,7 @@ Maybe we can separate the name of the state and create a new varible to be able 
 
 
 ```{r}
-variable <- train$geography;
+variable <- df$geography;
 summary <- summary(variable); summary
 table(variable)
 
@@ -341,7 +355,7 @@ It has a non-symmetric distribution, it is skewed with a long left tail observed
 
 
 ```{r}
-variable <- train$percentmarried
+variable <- df$percentmarried
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"percentmarried"] <- 1
 ```
@@ -353,7 +367,7 @@ Numerical variable that show the percentage of county residents aged 18-24 whose
 The distribution of this variable is skewed with a long right tail, we can confirm that it doesn't have a normal distribution thanks to the histogram and the curve. Moreover the p-value obtained in the shapiro-test confirm the non normal distribution. It doesn't have missing values, and it has 35 outliers, 5 of them severe. 
 
 ```{r}
-variable <- train$pctnohs18_24
+variable <- df$pctnohs18_24
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctnohs18_24"] <- 1
 ```
@@ -364,7 +378,7 @@ Numeric variable, it represent the percentage of county residents ages 18-24 hig
 
 We can observe with the median(34,7%) and the mean(35%) that the variable has a symmetric distribution, but after the shapiro_test we observe that it doesn't have a normal distribution. It doesn't have missing values and it has 33 outliers, non of them severe. 
 ```{r}
-variable <- train$pcths18_24
+variable <- df$pcths18_24
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pcths18_24"] <- 1
 ```
@@ -379,7 +393,7 @@ We will obtain the values knowing that pctnohs18_24 + pcths18_24 + pctsomecol18_
 -- A: Hauriem de fer els calculs aqui i ja calcular els outliers i tal be o ho fem a la part de imputation com esta ara?
 
 ```{r}
-variable <- train$pctsomecol18_24
+variable <- df$pctsomecol18_24
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctsomecol18_24"] <- 1
 outliers <- which(outliers_df$pctsomecol18_24 == 1); length(outliers)
@@ -389,7 +403,7 @@ outliers <- which(outliers_df$pctsomecol18_24 == 1); length(outliers)
 Numerical variable. Percent of county residents ages 18-24 highest education attained is a bachelor's degree. There are no missing values, it has 56 mild outliers 10 of them severes. After the shapiro-test we can reject the null hypothesis, thus it doesn't have a normal distribution. 
 
 ```{r}
-variable <- train$pctbachdeg18_24
+variable <- df$pctbachdeg18_24
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctbachdeg18_24"] <- 1
 ```
@@ -400,7 +414,7 @@ Numerical variable that express the percentage of county residents ages 25 and o
 
 It doesn't have missing values but it have 18 outliers, non of the severe. It doesn't have a normal distribution.
 ```{r}
-variable <- train$pcths25_over
+variable <- df$pcths25_over
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pcths25_over"] <- 1
 
@@ -415,7 +429,7 @@ Firstly we can see that there is a huge left skewness and there is a relatively 
 -- op2 : mild = 59 | sev = 3
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctbachdeg25_over)
+res.var <- summary_and_normality_check(df$pctbachdeg25_over)
 outliers_df[res.var,"pctbachdeg25_over"] <- 1
 ```
 
@@ -427,7 +441,7 @@ This variable contains over 82 NA values and has a slight right skewness and 11 
 
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctemployed16_over)
+res.var <- summary_and_normality_check(df$pctemployed16_over)
 outliers_df[res.var,"pctemployed16_over"] <- 1
 
 ```
@@ -441,7 +455,7 @@ This variable is heavily left skewed and contains over 46 outliers, of which 4 a
 -- op2: mild = 42 | sev = 4 
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctunemployed16_over)
+res.var <- summary_and_normality_check(df$pctunemployed16_over)
 outliers_df[res.var,"pctunemployed16_over"] <- 1
 ```
 
@@ -452,7 +466,7 @@ Numerical variable that represents the percentage of county residents with priva
 Despite having no NA and just 17 mild outliers, this variable has a huge standard deviation and a right skewed mean. Applying a shapiro test we reject the hypothesis that the distribution is normal.
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctprivatecoverage)
+res.var <- summary_and_normality_check(df$pctprivatecoverage)
 outliers_df[res.var,"pctprivatecoverage"] <- 1
 ```
 
@@ -465,7 +479,7 @@ The number of NA is humongous (356), but it has a small amount of mild outliers 
 -- op2 : After doing the Shapiro-Wilk test and obtaining a p_value = 0,14 we can not reject the null hypothesis, therefore this variable has a normal distribution. 
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctprivatecoveragealone)
+res.var <- summary_and_normality_check(df$pctprivatecoveragealone)
 outliers_df[res.var,"pctprivatecoveragealone"] <- 1
 ```
 ### Variable *pctempprivcoverage* 
@@ -477,7 +491,7 @@ Despite the low number of outliers (7 mild), the absence of NA, the small left s
 -- we should clarify which is the C.level at the begining of the project and then justify this part
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctempprivcoverage)
+res.var <- summary_and_normality_check(df$pctempprivcoverage)
 outliers_df[res.var,"pctempprivcoverage"] <- 1
 ```
 ### Variable *pctpubliccoveragealone*
@@ -487,7 +501,7 @@ Numerical variable that represents the percent of county residents with governme
 This variable contains 21 mild outliers, a great left skewness and a long right tail. Performing an inferential test like shapiro we get a tiny p-value which makes us reject the hypothesis that the distribution is normal under any significance level.
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctpubliccoveragealone)
+res.var <- summary_and_normality_check(df$pctpubliccoveragealone)
 outliers_df[res.var,"pctpubliccoveragealone"] <- 1
 ```
 ### Variable *pctwhite* 
@@ -501,7 +515,7 @@ This points out that the vast majority of counties have a high percentage of whi
 -- op2 : mild = 97 | sev = 7 
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctwhite)
+res.var <- summary_and_normality_check(df$pctwhite)
 outliers_df[res.var,"pctwhite"] <- 1
 ```
 ### Variable *pctblack*
@@ -513,7 +527,7 @@ There is a huge number of outliers (323), from which  99 are severe and there is
 -- op2: mild = 224 | sev = 99 
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctblack)
+res.var <- summary_and_normality_check(df$pctblack)
 outliers_df[res.var,"pctblack"] <- 1
 ```
 ### Variable *pctasian*
@@ -525,8 +539,8 @@ Pretty similarly to the last distribution, we have a heavily left skewed zipfian
 -- op2: mild = 198 | sev = 107 
 -- A: no acabo de entendre el resultat obtingut al boxplot dsp de mirar el histogarma
 ```{r}
-res.var <- summary_and_normality_check(train$pctasian)
-hist(train$pctasian , 50 )
+res.var <- summary_and_normality_check(df$pctasian)
+hist(df$pctasian , 50 )
 outliers_df[res.var,"pctasian"] <- 1
 ```
 ### Variable *pctotherrace*
@@ -538,7 +552,7 @@ Again this variable, just like the last 2 presents a huge left skewness and zipf
 -- op2 : mild = 181 | sev = 102 
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctotherrace)
+res.var <- summary_and_normality_check(df$pctotherrace)
 outliers_df[res.var,"pctotherrace"] <- 1
 ```
 ### Variable *pctmarriedhouseholds*
@@ -550,7 +564,7 @@ This variable contains 59 outliers from which 2 are severe and a noticeable left
 op2: mild = 57 | sev = 2 
 
 ```{r}
-res.var <- summary_and_normality_check(train$pctmarriedhouseholds)
+res.var <- summary_and_normality_check(df$pctmarriedhouseholds)
 outliers_df[res.var,"pctmarriedhouseholds"] <- 1
 ```
 
@@ -563,7 +577,7 @@ Finally, this last variable contains a fair amount of outliers (121) from which 
 op2 : mild = 104 | sev = 17 
 
 ```{r}
-res.var <- summary_and_normality_check(train$birthrate)
+res.var <- summary_and_normality_check(df$birthrate)
 outliers_df[res.var,"birthrate"] <- 1
 ```
 
@@ -587,7 +601,7 @@ Per variable, count:
 
 ```{r}
 # Number of errors (including inconsistencies). TODO
-md.pattern(train, rotate.names=T)
+md.pattern(df, rotate.names=T)
 ```
 
 On one hand, looking at the pattern, we can notice that there are 362 variables with no null values, and that the vast majority of nulls (1056) are located on the pctsomecol18_24 variable with just 1 null column. Another remarkable trend is that up to 248 individuals have 2 null values in variables pctsomecol18_24 and pctprivatecoveragealone, while this other variable just has 83 pure nulls (Only this column). The last variable that contains a low amount of null values is pctemployed16_over, where 20 indivudals have the last 3 mentioned variables containing nulls, and the rest of few posible NA values come from pattern permutations of these 3 variables. Therefore this dataset only has 3 possible rows containing NA, and only one of them is relevant in this aspect. Ranking:
@@ -627,7 +641,7 @@ There are 362 obs without NA in any variable, 1144 obs with 1 variable with a NA
 
 ```{r}
 #Number of missing values
-na_counts <- rowSums(is.na(train))
+na_counts <- rowSums(is.na(df))
 table(na_counts)
 ```
 
@@ -642,13 +656,13 @@ table(outliers_counts)
 Considering over 20 numerical variables that contain few correlated variables and considering a 1% significance level, 209 multivariate outliers are found in the dataset.
 ```{r}
 #Identify individuals considered as multivariant outliers.
-train$avgdeathsperyear <- as.numeric(train$avgdeathsperyear)
-train$medincome <- as.numeric(train$medincome)
-train$popest2015 <- as.numeric(train$popest2015)
+df$avgdeathsperyear <- as.numeric(df$avgdeathsperyear)
+df$medincome <- as.numeric(df$medincome)
+df$popest2015 <- as.numeric(df$popest2015)
 
 #Compute multivariant outliers and find their ids (24)
 subset_num_vars <- c(1,2,3:7,10:12,14:16, 18:20, 22,23, 25:33)
-res_mout <- Moutlier(train[,subset_num_vars], quantile=0.97, plot=T)
+res_mout <- Moutlier(df[,subset_num_vars], quantile=0.97, plot=T)
 mout_ids <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff))
 
 #Reset graphical parameters and plot the outliers
@@ -666,7 +680,7 @@ Finally, looking at the multivariate factor profiling, we see that there is a gl
 
 
 ```{r}
-anal_df <- train
+anal_df <- df
 #Binary factor if its a  multivariate outlier
 anal_df$mout <- 0 
 anal_df[mout_ids, "mout"] <- 1
@@ -674,7 +688,7 @@ anal_df$mout <- factor(anal_df$mout, labels=c("Not M.O", "Yes M.O"))
 #Number of univariate outlier variables for a given observation
 anal_df$n_uout <- rowSums(outliers_df)
 #Number of missing values in variables for a given observation 
-anal_df$n_miss <- rowSums(is.na(train))
+anal_df$n_miss <- rowSums(is.na(df))
 
 summary(anal_df[, c("mout", "n_uout", "n_miss")]); sd(anal_df$n_uout); sd(anal_df$n_miss)
 num_vars <- anal_df[sapply(anal_df, is.numeric)]
@@ -689,45 +703,45 @@ catdes(anal_df, num.var=34, proba=0.05)
 
 Given the huge amount of null values, the impute PCA has not been able to replicate the original distribution of this messy variable. 
 ```{r}
-num_vars <- train[sapply(train, is.numeric)]
-miss_ids <- which(is.na(train$pctsomecol18_24)) 
+num_vars <- df[sapply(df, is.numeric)]
+miss_ids <- which(is.na(df$pctsomecol18_24)) 
 res_imp <- imputePCA(num_vars)
 imp_pctsomecol <- res_imp$completeObs[, "pctsomecol18_24"]
 
 # Calculate the quantiles for validation
-quantiles_train <- quantile(train$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_df <- quantile(df$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
 quantiles_imp <- quantile(imp_pctsomecol, probs = seq(0, 1, 0.1), na.rm = FALSE)
 
-plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
+plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
      xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
 lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
-legend("topright", legend = c("train$pctsomecol18_24", "imp_pctsomecol"),
+legend("topright", legend = c("df$pctsomecol18_24", "imp_pctsomecol"),
        col = c("blue", "red"), lwd = 2)
 
 
 #We won't impute the values!
-train[miss_ids, "pctsomecol18_24"] <- imp_pctsomecol[miss_ids]
+df[miss_ids, "pctsomecol18_24"] <- imp_pctsomecol[miss_ids]
 
 # --- op2 -- 
-summary(train$pctsomecol18_24)
-imp_values <- 100 - train$pctnohs18_24[miss_ids] - train$pcths18_24[miss_ids] - train$pctbachdeg18_24[miss_ids]
-pct2 <- train$pctsomecol18_24
+summary(df$pctsomecol18_24)
+imp_values <- 100 - df$pctnohs18_24[miss_ids] - df$pcths18_24[miss_ids] - df$pctbachdeg18_24[miss_ids]
+pct2 <- df$pctsomecol18_24
 pct2[miss_ids] <- imp_values
 
 
 quantiles_2 <- quantile(pct2, probs = seq(0,1,0.1), na.rm = FALSE)
 summary(pct2)
 
-plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
+plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
      xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
 
 lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2); 
 lines(seq(0, 1, 0.1), quantiles_2, col = "green", lwd = 2); 
-legend("topright", legend = c("train$pctsomecol18_24", "imp_pctsomecol","imputation2"),
+legend("topright", legend = c("df$pctsomecol18_24", "imp_pctsomecol","imputation2"),
        col = c("blue", "red","green"), lwd = 2)
 
 # add imputated values
-train$pctsomecol18_24 <- pct2
+df$pctsomecol18_24 <- pct2
 ```
 
 
@@ -737,22 +751,22 @@ pctemployed16_over only contains 70 null values and the imputePCA function has b
 
 ```{r}
 
-num_vars <- train[sapply(train, is.numeric)]
-miss_ids <- which(is.na(train$pctemployed16_over)) 
+num_vars <- df[sapply(df, is.numeric)]
+miss_ids <- which(is.na(df$pctemployed16_over)) 
 res_imp <- imputePCA(num_vars)
 imp_pctemployed16_over <- res_imp$completeObs[, "pctemployed16_over"]
 
 # Calculate the quantiles for validation
-quantiles_train <- quantile(train$pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_df <- quantile(df$pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = TRUE)
 quantiles_imp <- quantile(imp_pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = FALSE)
 
-plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
+plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
      xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
 lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
 legend("topright", legend = c("pctemployed16_over", "imp_pctemployed16_over"),
        col = c("blue", "red"), lwd = 2)
 
-train[miss_ids, "pctemployed16_over"] <- imp_pctemployed16_over[miss_ids]
+df[miss_ids, "pctemployed16_over"] <- imp_pctemployed16_over[miss_ids]
 ```
 
 ### pctprivatecoveragealone
@@ -761,22 +775,22 @@ Similarly, the variable pctprivatecoveragealone is better informed despite a qui
 
 ```{r}
 
-num_vars <- train[sapply(train, is.numeric)]
-miss_ids <- which(is.na(train$pctprivatecoveragealone)) 
+num_vars <- df[sapply(df, is.numeric)]
+miss_ids <- which(is.na(df$pctprivatecoveragealone)) 
 res_imp <- imputePCA(num_vars)
 imp_pctprivatecoveragealone <- res_imp$completeObs[, "pctprivatecoveragealone"]
 
 # Calculate the quantiles for validation
-quantiles_train <- quantile(train$pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_df <- quantile(df$pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = TRUE)
 quantiles_imp <- quantile(imp_pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = FALSE)
 
-plot(seq(0, 1, 0.1), quantiles_train, type = "l", col = "blue", lwd = 2,
+plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
      xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
 lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
-legend("topright", legend = c("train$pctprivatecoveragealone", "imp_pctprivatecoveragealone"),
+legend("topright", legend = c("df$pctprivatecoveragealone", "imp_pctprivatecoveragealone"),
        col = c("blue", "red"), lwd = 2)
 
-train[miss_ids, "pctprivatecoveragealone"] <- imp_pctprivatecoveragealone[miss_ids]
+df[miss_ids, "pctprivatecoveragealone"] <- imp_pctprivatecoveragealone[miss_ids]
 
 ```
 
@@ -789,9 +803,9 @@ TODO: explicar correlacions.... (Cuidado, no cal explicar les correlacions de ta
 
 ```{r}
 
-names(train)
-num_vars <- train[sapply(train, is.numeric)]
-cat_vars <- train[!sapply(train, is.numeric)]
+names(df)
+num_vars <- df[sapply(df, is.numeric)]
+cat_vars <- df[!sapply(df, is.numeric)]
 corrplot(cor(num_vars))
 ```
 
@@ -801,9 +815,9 @@ For some unexpected reason the geography categorical variable causes some unexpe
 ```{r}
 subset_num <- c(1,2,3:7,10:12,14:16, 18:20, 22,23, 25:33)
 subset_cat <- c(9)
-subset_train <- c(subset_num, subset_cat)
+subset_df <- c(subset_num, subset_cat)
 
-res_anal <- condes(train[, subset_train], num.var=3, proba=0.01)
+res_anal <- condes(df[, subset_df], num.var=3, proba=0.01)
 res_anal
 ```
 
@@ -813,15 +827,15 @@ It has been found previously that the target_variable doesn't follow a normal di
 
 ```{r}
 library(stats)
-acf(train$target_deathrate)
+acf(df$target_deathrate)
 
-ids <- sample(1:nrow(train), nrow(train))
-train <- train[ids, ]
-acf(train$target_deathrate)
+ids <- sample(1:nrow(df), nrow(df))
+df <- df[ids, ]
+acf(df$target_deathrate)
 ```
 
 
-# Modeling (train data)
+# Modeling
 ## Initial Model exploration and Multicollinearity study
 
 Firstly, it is important to realize that just as in past sections, the geography variable should just be used as a supplementary variable and not used for modelling purposes. Two initial models are built, one with all the numeric variables, and a second one containing all the numeric variables + all categorical variables.
@@ -850,7 +864,7 @@ Exploring the residual analysis plots of each model, a common trend is easily id
 ```{r}
 
 
-m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=train)
+m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=df)
 
 summary(m1)
 vif(m1)
@@ -858,7 +872,7 @@ par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
 plot(m1, id.n=0)
 
 # Mixed (Categorical + numerical)
-m2 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + binnedinc, data=train)
+m2 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + binnedinc, data=df)
 
 summary(m2)
 vif(m2)
@@ -870,7 +884,7 @@ Following up, we will build m3, a modification of m2 removing some inflating var
 
 ```{r}
 
-m3 <- lm(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
+m3 <- lm(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=df)
 vif(m3)
 summary(m3)
 plot(m3)
@@ -892,9 +906,9 @@ plot(allEffects(m3))
 Possibly we need to perform some transformations...
 ```{r}
 #Exemple random ;)
-#boxcox(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
+#boxcox(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=df)
 
-#boxTidwell(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=train)
+#boxTidwell(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=df)
 ```
 
 ## Influential data study 
