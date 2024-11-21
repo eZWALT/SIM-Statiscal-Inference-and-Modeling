@@ -17,6 +17,9 @@ editor_options:
 
 # Introduction
 
+
+**This report does not include all the code and outputs produced throughout the project but highlights the key ones to support the explanations provided. For a complete view of all outcomes that informed the conclusions presented in this report, please refer to the accompanying RMarkdown file.**
+
 This report documents the process and results of the Modeling Assignment for the Statistical Modeling and Inference course. The primary aim of this project is to analyze the Cancer Mortality dataset and build an accurate and interpretable linear model to predict target_deathrate, which represents the average cancer mortality rate per 100,000 individuals.
 
 The project begins with data preparation and exploratory analysis, focusing on cleaning and enhancing the dataset to ensure its quality. This involves generating a Data Quality Report, identifying and handling missing values through imputation, and analyzing variable distributions and relationships. Univariate descriptive analysis is performed to examine each variable’s characteristics.
@@ -37,12 +40,17 @@ This report follows a systematic and methodical approach to ensure the developme
 
 # First Steps
 
-Load the dataset and required libraries
-```{r}
-knitr::opts_chunk$set(eval = FALSE)
+To begin, we import the necessary data, load the required libraries, and create functions to streamline repetitive processes.
+
+
+```{r include = FALSE}
+# Set global chunk options
+knitr::opts_chunk$set(
+  eval = FALSE,
+  fig.align='center', 
+  out.width='50%'
+)
 rm(list=ls())
-# Manage output plots width and align
-knitr::opts_chunk$set(fig.align='center', out.width='50%') 
 
 train <- read.csv("train.csv")
 test <- read.csv("test.csv")
@@ -58,7 +66,6 @@ library(VIM)
 
 ```
 
-Define some functions to avoid repetition of same processes
 ```{r eval = TRUE}
 calculate_outliers <- function(data) {
   # Check for regular outliers
@@ -130,14 +137,15 @@ outliers_df[,] <- 0
 
 # Data Preparation & Exploratory Analysis
 
-In this section, a descriptive analysis is conducted on each variable, a data quality report is generated, and imputation and profiling are addressed.
+In this section, we undertake a crucial step in any data science project, particularly for modeling purposes. A detailed descriptive analysis is performed on each variable, highlighting their most relevant characteristics. Following a column-by-column examination of the dataset, we generate a data quality report and prepare the data for the subsequent modeling stage by addressing missing values through imputation methods.
 
 
-## Univariate Descriptive Analysis (Variable Analysis) & Data quality
+## Univariate Descriptive Analysis & Data quality
 
-- Original numeric variables corresponding to qualitative concepts have to be converted to factors:
-- Original numeric variables corresponding to real quantitative concepts are kept as numeric but additional factors should also be created
-- Exploratory Data Analysis for each variable (numeric summary and graphic support) of the train sample.
+In this initial phase, we analyze all variables in the dataset, highlighting their most significant characteristics. We also convert numeric variables that represent qualitative concepts into factors and consider creating new variables based on existing numeric ones.
+
+Subsequently, we present a data quality report that assesses the overall quality of the data and discusses how it may affect the modeling process.
+
 
 ### Variable *avganncount*
 
@@ -303,7 +311,7 @@ outliers_df[res.var,"medianagemale"] <- 1
 The medianagefemale is a numerical variable that analyze the median age of the females in each county.
 It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing the results of the Shapiro-test we observe that does not have a normal distribution. There are 55 outliers none of them severe 
 
-```{r}
+```{r  eval = TRUE}
 variable <- train$medianagefemale
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"medianagefemale"] <- 1
