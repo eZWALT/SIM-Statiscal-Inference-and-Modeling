@@ -271,7 +271,11 @@ Given the predominance of zero values and the highly skewed nature, this variabl
 variable <- df$studypercap;
 res.var <- summary_and_normality_check(variable)
 
-outliers_df[res.var,"studypercap"] <- 1
+# Delete from train, test
+lltrain <- which(names(df) == "studypercap");lltrain
+lltest <- which(names(test) == "studypercap");lltest
+df <- df[,-lltrain]
+test <- test[,-lltest]
 ```
 
 
