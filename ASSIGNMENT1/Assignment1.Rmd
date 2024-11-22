@@ -167,7 +167,8 @@ The difference between the mean (524.24) and the median (155) indicates that the
 ```{r}
 variable <- df$avganncount
 ll1 <- which(variable == 1962.667684 ); length(ll1)
-variable[variable == 1962.667684 ] <- NA
+variable[ll1] <- NA
+df$avganncount[ll1] <- NA 
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"avganncount"] <- 1
 outliers <- which(outliers_df$avganncount == 1); length(outliers)
@@ -217,7 +218,8 @@ These results suggest that while the variable is mostly symmetric within its cen
 ```{r}
 variable <- df$incidencerate;
 ll1 <- which(variable == 453.5494221 ); length(ll1)
-variable[variable == 453.5494221 ] <- NA
+variable[ll1] <- NA
+df$incidencerate[ll1] <- NA 
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"incidencerate"] <- 1
 ```
@@ -653,8 +655,8 @@ To potentially enhance the model, we propose extracting the state names from geo
 
 ```{r}
 df$f.state <- sapply(strsplit(df$geography, ", "), function(x) x[2])
-test$state <- sapply(strsplit(test$geography, ", "), function(x) x[2])
-table(df$state)
+table(df$f.state)
+df$f.state <- as.factor(df$f.state)
 ```
 
 ### *education factor 18_24* factor
@@ -728,48 +730,34 @@ table(df$f.unemployment)
 
 
 
-## Data Quality Report 
+### Data Quality Report 
 
 Now that all the variables have been slightly analyzed in terms of their meaning. Given that univariate outliers and NA values have already been computed and shown, only a ranking and a visual summary will be showcased to gather the main insights visually. 
 
 This quality report will be divided between variables and individuals of the dataset, and finally a multivariate outlier analysis will be performed.
 
 ### Per variable 
+### Missing values and errors 
 
-Per variable, count:
+Upon examining the dataframe, we observed that 29 variables have no missing values. However, the majority of the null values are concentrated in the pctsomecol18_24 variable, with a total of 1376 missing values. These missing values were replaced using a calculation based on three complementary variables (pctnohs18_24, pcths18_24, and pctbachdeg18_24), ensuring consistency. This adjustment was made before creating the education_level factor to maintain the integrity of the data.
 
-- Number of missing values.
-- Number of errors (including inconsistencies).
-- Number of outlines.
-- Rank variables according the sum of missing values (and errors).
+Additionally, the pctemployed16_over variable contains 82 missing values, while pctprivatecoveragealone has 356. 
+
+Lastly, we identified that avganncount and incidencerate each contained 126 erroneous values in the same observations. To improve the quality of the analysis and avoid introducing bias, these error values were replaced with NA. This adjustment allows for a more realistic and reliable analysis of the data moving forward.
+
+These missing values will be addressed through an imputation process, which will aim to preserve the original distribution of the variables while filling in the gaps. This ensures that the imputed values align with the overall dataset characteristics.
+
+### Outliers
+Outliers were analyzed to identify variables with the highest number of mild and severe outliers, as these can significantly impact data distribution and model performance. Below are the top 5 variables ranked by the number of outliers in each category:
 
 
-```{r}
-# Number of errors (including inconsistencies). TODO
-md.pattern(df, rotate.names=T)
-```
-
-On one hand, looking at the pattern, we can notice that there are 362 variables with no null values, and that the vast majority of nulls (1056) are located on the pctsomecol18_24 variable with just 1 null column. Another remarkable trend is that up to 248 individuals have 2 null values in variables pctsomecol18_24 and pctprivatecoveragealone, while this other variable just has 83 pure nulls (Only this column). The last variable that contains a low amount of null values is pctemployed16_over, where 20 indivudals have the last 3 mentioned variables containing nulls, and the rest of few posible NA values come from pattern permutations of these 3 variables. Therefore this dataset only has 3 possible rows containing NA, and only one of them is relevant in this aspect. Ranking:
-
-| Rank | Null values                     |
-|------|---------------------------------|
-|  1   | pctsomecol18_24: 1375 NA        |
-|  2   | pctprivatecoveragealone: 356 NA |
-|  4   | avganncount : 126 NA            |
-|  4   | incidencerate : 126 NA          |
-|  3   | pctemployed16_over: 82 NA       |
-
-On the other hand, the top 5 ranking for variables with the most amount of mild and severe outliers is: 
-
-*TO_DO --> CHECK*
-
-| Rank | Mild Outliers          | Severe Outliers      |
-|------|------------------------|----------------------|
-| 1    | avganncount 333        | avganncount 257      |
-| 2    | pctblack 323           | studypercap 222      |
-| 3    | studypercap 307        | popest2015  162      |
-| 4    | pctasian 305           | avgdeathsperyear 138 |
-| 5    | pctotherrace 283       | pctasian         107 |
+| Rank | Mild Outliers                | Severe Outliers                 |
+|------|---------------------------   |----------------------           |
+| 1    | pctprivatecoveragealone 360  | pctprivatecoveragealone   257   |
+| 2    | popest2015         252       | popest2015                162   |
+| 3    | avgdeathsperyear   225       | avgdeathsperyear          138   |
+| 4    | pctblack           224       | avganncount               131   |
+| 5    | avganncount        207       | pctasian                  107   |
 
 
 
@@ -842,56 +830,71 @@ corrplot(cor(num_vars))
 catdes(anal_df, num.var=34, proba=0.05)
 ```
 
-## Imputation
-### pctemployed16_over 
-
-pctemployed16_over only contains 70 null values and the imputePCA function has been able of almost perfectly preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the train data.
-
+### Imputation
+### Function
 ```{r}
+imputation_function <- function(variable) {
 
-num_vars <- df[sapply(df, is.numeric)]
-miss_ids <- which(is.na(df$pctemployed16_over)) 
-res_imp <- imputePCA(num_vars)
-imp_pctemployed16_over <- res_imp$completeObs[, "pctemployed16_over"]
+  num_vars <- df[sapply(df, is.numeric)]
+  miss_ids <- which(is.na(df[[variable]]))
 
-# Calculate the quantiles for validation
-quantiles_df <- quantile(df$pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = TRUE)
-quantiles_imp <- quantile(imp_pctemployed16_over, probs = seq(0, 1, 0.1), na.rm = FALSE)
+  # Perform PCA-based imputation
+  res_imp <- imputePCA(num_vars)
+  imp_values <- res_imp$completeObs[, variable]
+  
+  # Calculate quantiles for validation
+  quantiles_df <- quantile(df[[variable]], probs = seq(0, 1, 0.1), na.rm = TRUE)
+  quantiles_imp <- quantile(imp_values, probs = seq(0, 1, 0.1), na.rm = FALSE)
+  
+  # Plot the quantile comparison
+  plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
+       xlab = "Quantile", ylab = "Value", main = paste("Quantile Comparison for", variable))
+  lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
+  legend("topright", legend = c(variable, paste("imp_", variable, sep = "")),
+         col = c("blue", "red"), lwd = 2)
+  
+  return(list(
+    na_indexs = miss_ids,
+    imp_values = imp_values[miss_ids]
+  ))
 
-plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
-     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
-lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
-legend("topright", legend = c("pctemployed16_over", "imp_pctemployed16_over"),
-       col = c("blue", "red"), lwd = 2)
-
-df[miss_ids, "pctemployed16_over"] <- imp_pctemployed16_over[miss_ids]
-```
-
-### pctprivatecoveragealone
-
-Similarly, the variable pctprivatecoveragealone is better informed despite a quite high number of null values (253) and the imputePCA has been successful to preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the train data.
-
-```{r}
-
-num_vars <- df[sapply(df, is.numeric)]
-miss_ids <- which(is.na(df$pctprivatecoveragealone)) 
-res_imp <- imputePCA(num_vars)
-imp_pctprivatecoveragealone <- res_imp$completeObs[, "pctprivatecoveragealone"]
-
-# Calculate the quantiles for validation
-quantiles_df <- quantile(df$pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = TRUE)
-quantiles_imp <- quantile(imp_pctprivatecoveragealone, probs = seq(0, 1, 0.1), na.rm = FALSE)
-
-plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
-     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
-lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
-legend("topright", legend = c("df$pctprivatecoveragealone", "imp_pctprivatecoveragealone"),
-       col = c("blue", "red"), lwd = 2)
-
-df[miss_ids, "pctprivatecoveragealone"] <- imp_pctprivatecoveragealone[miss_ids]
+}
 
 ```
 
+### *pctemployed16_over* 
+
+The variable pctemployed16_over contains only 82 missing values, making imputation a feasible solution to preserve data completeness. Using the imputePCA function, we were able to nearly perfectly replicate the original distribution of the variable. This is validated through a quantile comparison plot, where the imputed values (red line) align closely with the original distribution (blue line). Given this alignment, the imputation effectively maintains the variable's integrity and is a valuable step for ensuring high-quality data for modeling. The imputed values were subsequently incorporated into the dataset.
+
+```{r}
+imp.res <- imputation_function("pctemployed16_over")
+df[imp.res$na_indexs,"pctemployed16_over"] = imp.res$imp_values
+```
+
+### *pctprivatecoveragealone* 
+
+Similarly, the variable pctprivatecoveragealone, despite having a relatively high number of missing values (356), benefits significantly from imputation. The imputePCA function has successfully preserved the original distribution of the variable, ensuring that the imputed values align closely with the observed data. Therefore, performing imputation on the training dataset is a valuable and effective step.
+
+```{r}
+imp.res <- imputation_function("pctprivatecoveragealone")
+df[imp.res$na_indexs,"pctprivatecoveragealone"] = imp.res$imp_values
+summary(df)
+```
+
+
+### *incidencerate* // *avganncount* 
+
+Finally, we completed the imputation process for the two variables where 126 erroneous values were replaced with NA. After performing the imputation, we verified that the imputed values aligned well with the expected distribution, ensuring their accuracy. These updated values were then integrated into the main dataframe.
+To conclude, we confirmed that all variables in the dataset have no missing values by using the summary() function.
+```{r}
+imp.res <- imputation_function("incidencerate")
+df[imp.res$na_indexs,"incidencerate"] = imp.res$imp_values
+
+imp.res <- imputation_function("avganncount")
+df[imp.res$na_indexs,"avganncount"] = imp.res$imp_values
+
+summary(df)
+```
 
 ## Profiling & Relationships
 
@@ -962,7 +965,7 @@ Exploring the residual analysis plots of each model, a common trend is easily id
 ```{r}
 
 
-m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=df)
+m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=df)
 
 summary(m1)
 vif(m1)
