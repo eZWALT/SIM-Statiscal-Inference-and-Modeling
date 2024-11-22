@@ -18,7 +18,7 @@ editor_options:
 # Introduction
 
 
-**This report does not include all the code and outputs produced throughout the project but highlights the key ones to support the explanations provided. For a complete view of all outcomes that informed the conclusions presented in this report, please refer to the accompanying RMarkdown file.**
+**Please refer to the appendix at the end of the report in order to see all the code and outputs produced during the EDA. The first section contains exclusively the explanations and conclusions extracted from the outputs and plots.**
 
 This report documents the process and results of the Modeling Assignment for the Statistical Modeling and Inference course. The primary aim of this project is to analyze the Cancer Mortality dataset and build an accurate and interpretable linear model to predict target_deathrate, which represents the average cancer mortality rate per 100,000 individuals.
 
@@ -279,10 +279,11 @@ test <- test[,-lltest]
 ```
 
 
-### Variable *binnedi* : I CONSIDER IT IS WORTH TO REMOVE
+### Variable *binnedi* :
 
-Variable *binnedi* is a categorical variable (or factor) that expresses the median income per capita binned by decile.  
+The variable *binnedi* represents median income per capita binned into deciles, categorizing counties into ten groups based on their income distribution. The frequency table shows a relatively balanced distribution across these bins, with counts ranging from 164 to 195 observations per bin. For instance, the smallest bin (37413.8, 40362.7] contains 164 observations, while the largest bin (48021.6, 51046.4] contains 195. The proportion table confirms this balance, with percentages varying narrowly from 8.96% to 10.65%. It contains no missing values.
 
+Given its nature, *binnedi* is likely related to *medincome*, the median income per county, as both variables represent different perspectives of income distribution. While medincome is a continuous variable, binnedi simplifies analysis by discretizing income into clear categories. This potential relationship highlights the need to evaluate binnedi alongside medincome to assess redundancy or complementarity in modeling efforts.
 
 ```{r}
 
@@ -297,40 +298,45 @@ barplot(table(variable), main="Bar Plot of Variable", xlab="Categories", ylab="F
 
 ### Variable *medianage* :
 
-Medianage is a numerical variable that expresses the median age of county residents. 
+*medianage* is a numerical variable that expresses the median age of county residents. 
 
-The variable has no missing values. Has 65 outliers, 18 of which are severe outliers. All of these outliers should be removed because it's impossible to be more than 100 years. Once we removed all the incorrect values we get 52 outliers, 18 of then severe. Finally we observe a symmetric distribution with a median = 40.90 and a mean=40.85. After analyzing the boxplot, and the histogram along the Shapiro test we can discard the normality of the variable's distribution.
-
+Note that initially, the variable contained 18 nonsensical values, ranging from 349.2 to 624, which were considered incoherent. These values were replaced with NAs, leaving the variable with no other missing values. The cleaned data shows a median age ranging from 23.3 to 59.0 years, with a mean of 40.85 and a standard deviation of 5.14. The skewness is near zero (-0.024), indicating a nearly symmetric distribution. However, the Boxplot and Shapiro-Wilk test for normality suggests the variable is not normally distributed despite its symmetry. The data contains 52 mild outliers (both above the upper bound and below the lower bound), but none are classified as severe. The most frequent value is 38.8, which occurs 29 times.
 
 ```{r}
 variable <- df$medianage
 table(variable)
-variable[variable > 70 ] <- NA
-table(variable)
-res.var <- summary_and_normality_check(variable)
+df[which(df$medianage > 60), c("medianage")] <- NA
+summary(df$medianage)
+res.var <- summary_and_normality_check(df$medianage)
 outliers_df[res.var,"medianage"] <- 1
 ```
 
 
 ### Variable *medianagemale* :
 
-Numeric variable, represents the mean age of the male population of each county.
+*medianagemale* represents the median age of male county residents. 
 
-There are no missing values and it has 46 outliers, non of them several outliers. The mean is 39.59 yo and the median 39.50yo what suggest a simmetry distribution. After looking at the results of the shapiro-test it doesn't have a normal distribution 
+All its values are reasonable, ranging from 23.0 to 60.2 years, with no incoherent or missing entries. The variable has a mean of 39.59 years, a median of 39.50 years, and a standard deviation of 5.19, indicating a central tendency and variability. The skewness is slightly positive (0.161), suggesting a slight asymmetry with a longer right tail. However, the Shapiro-Wilk normality test indicates the distribution deviates significantly from normality. The dataset contains 46 mild outliers.
+
+Comparing *medianagemale* with *medianage*, the two variables exhibit similar distributions and characteristics, which is expected as *medianage* includes both genders. 
+
 
 ```{r}
 variable <- df$medianagemale
 res.var <- summary_and_normality_check(variable)
+table(variable)
 outliers_df[res.var,"medianagemale"] <- 1
 ```
 
-### Variable *medianagefemale* : I AM NOT SURE IF IT'S WORTH IT TO SEPARATE THE MEDIANAGE WITH SEX
+### Variable *medianagefemale* :
 
-The medianagefemale is a numerical variable that analyze the median age of the females in each county.
-It has a simmetric distribution (median=42.40, mean=42,17) but after analyzing the results of the Shapiro-test we observe that does not have a normal distribution. There are 55 outliers none of them severe 
+*medianagefemale* represents the median age of female county residents. 
 
-```{r  eval = TRUE}
+Its values range from 23.6 to 58.2 years. All entries are valid, showing no nonsensical or missing values. The average median age is 42.17 years, slightly higher than that of males, with a median of 42.40 years and a standard deviation of 5.20 years. The data is slightly skewed to the left, as indicated by a skewness of -0.206, and the Shapiro-Wilk test confirms a significant deviation from normality. There are 55 mild outliers. 
+
+```{r }
 variable <- df$medianagefemale
+table(variable)
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"medianagefemale"] <- 1
 ```
@@ -338,87 +344,92 @@ outliers_df[res.var,"medianagefemale"] <- 1
 
 ### Variable *geography* :
 
-Categorical variable that shows the name of each county. We can use this variable as a PK 
-
---comment -- 
-Maybe we can separate the name of the state and create a new varible to be able to study the distribution around the United States 
-
+The variable *geography* is a categorical variable that specifies the name of the county for each observation. It contains no missing values and serves as a unique identifier for each row, as all values are distinct. Additionally, it includes the name of the state to which each county belongs. To potentially enhance the model, we propose extracting the state names from geography and creating a new factor representing states. This new factor could capture regional effects and improve the model's ability to identify patterns related to state-level characteristics.
 
 ```{r}
 variable <- df$geography;
-summary <- summary(variable); summary
 table(variable)
+
+#Create new factor (in the train and test set)
+df$state <- sapply(strsplit(df$geography, ", "), function(x) x[2])
+test$state <- sapply(strsplit(test$geography, ", "), function(x) x[2])
+table(df$state)
 
 ```
 
 ### Variable *percentmarried* 
 
-Numerical variable that represent the percent of county residents who are married.
+The variable *percentmarried* represents the percentage of county residents who are married. 
 
-It has a non-symmetric distribution, it is skewed with a long left tail observed in the histogram. It doesn't have missing values, it has 34 outliers (non of them severe) and they are concentrated on the lower end of the distribution. With the shapiro-test we can confirm the rejection of the null hypothesis, therefore it doesn't have a normal distribution.   
-
+It contains no errors, as all values fall within the valid range of 0 to 100. The variable has a minimum of 23.1% and a maximum of 68.0%, with a mean of 51.9% and a median of 52.5%. The standard deviation is 6.74%, indicating moderate variability in marriage rates across counties. The distribution is slightly left-skewed, with a skewness of -0.65, suggesting a higher concentration of values near the upper end of the range. Although the Shapiro-Wilk test confirms that the distribution is not normal, this skewness does not indicate extreme asymmetry. There are 34 outliers, but none are classified as severe. The most frequent value is 52.2%, which appears 22 times.
 
 ```{r}
 variable <- df$percentmarried
+table(variable)
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"percentmarried"] <- 1
 ```
 
 ### Variable *pctnohs18_24* 
 
-Numerical variable that show the percentage of county residents aged 18-24 whose highest level of education is less than a high school diploma.
-
-The distribution of this variable is skewed with a long right tail, we can confirm that it doesn't have a normal distribution thanks to the histogram and the curve. Moreover the p-value obtained in the shapiro-test confirm the non normal distribution. It doesn't have missing values, and it has 35 outliers, 5 of them severe. 
+The numerical variable *pctnohs18_24* represents the percentage of county residents aged 18-24 whose highest level of education is less than high school. The values range from 0.5% to 59.1%, with a mean of 18.29% and a median of 17.2%. The distribution of the variable is positively skewed, with a skewness of 0.89, suggesting that a higher proportion of counties have lower values (fewer residents with less than high school education), while some counties exhibit higher percentages. The Shapiro-Wilk test for normality confirms a significant deviation from normality. There are 35 outliers, with 5 classified as severe. 
 
 ```{r}
 variable <- df$pctnohs18_24
+table(df$pctnohs18_24)
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctnohs18_24"] <- 1
 ```
 
 ### Variable *ppcths18_24* 
 
-Numeric variable, it represent the percentage of county residents ages 18-24 highest education attained is a high school diploma.
+The variable *pcths18_24* represents the percentage of county residents aged 18-24 whose highest level of education is a high school diploma. 
 
-We can observe with the median(34,7%) and the mean(35%) that the variable has a symmetric distribution, but after the shapiro_test we observe that it doesn't have a normal distribution. It doesn't have missing values and it has 33 outliers, non of them severe. 
+Note that there is a county with a 0% (Greeley County, Kansas), which potentially is an error. 
+
+The values range from 0% to 72.5%, with a mean of 35% and a median of 34.7%. The standard deviation is 8.96%, indicating substantial variability in high school graduation rates across counties. The skewness is 0.22, suggesting a slight positive skew, meaning that most counties have lower percentages of residents with only a high school diploma, while a few counties exhibit higher values. The Shapiro-Wilk test confirms that the distribution is not normal. There are 32 outliers, none of which are severe. 
+
+This variable is related to *pctnohs18_24* (the percentage of residents aged 18-24 without a high school diploma), and we can consider creating a factor variable for characterizing this relation.
+
 ```{r}
 variable <- df$pcths18_24
-res.var <- summary_and_normality_check(variable)
+ll<- which(df$pcths18_24 == 0);
+res.var <- summary_and_normality_check(df$pcths18_24)
 outliers_df[res.var,"pcths18_24"] <- 1
+table(df$pcths18_24)
 ```
 
 ### Variable *pctsomecol18_24* 
 
-Numerical variable. Percent of county residents ages 18-24 highest education attained some college. 
+The variable *pctsomecol18_24* represents the percentage of county residents aged 18-24 whose highest level of education attained is some college. However, this variable contains 1,376 missing values, which accounts for approximately 75% of the total observations. Given the high proportion of missing data, further steps will be taken to address the missing values, either through imputation methods to obtain valid results or by deleting the variable if it cannot be reasonably imputed.
 
-It has 1375 missing values. (75%) therefore we are going to do further actions in the imputation part. 
-We will obtain the values knowing that pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pctbachdeg18_24 = 100
-
--- A: Hauriem de fer els calculs aqui i ja calcular els outliers i tal be o ho fem a la part de imputation com esta ara?
 
 ```{r}
-variable <- df$pctsomecol18_24
-res.var <- summary_and_normality_check(variable)
-outliers_df[res.var,"pctsomecol18_24"] <- 1
-outliers <- which(outliers_df$pctsomecol18_24 == 1); length(outliers)
+summary(df$pctsomecol18_24)
 ```
+
 ### Variable *pctbachdeg18_24* 
 
-Numerical variable. Percent of county residents ages 18-24 highest education attained is a bachelor's degree. There are no missing values, it has 56 mild outliers 10 of them severes. After the shapiro-test we can reject the null hypothesis, thus it doesn't have a normal distribution. 
+The variable *pctbachdeg18_24* represents the percentage of county residents aged 18-24 who have attained a bachelor's degree. It ranges from 0% to 51.8%, with a mean of 6.22% and a median of 5.4%. The standard deviation is 4.52%, indicating notable variability across counties. A key feature of this variable is the presence of 73 zero values, meaning that in many counties, no residents aged 18-24 have a bachelor's degree. The skewness is 1.98, reflecting a strongly positive skew, where most counties have relatively low percentages, while a few counties exhibit exceptionally high values. The Shapiro-Wilk test indicates that the normality assumption is rejected. The variable contains 56 mild outliers, and 10 of them classified as severe.
+
+It may also be particularly insightful when combined with related variables, such as pcths18_24 and pctsomecol18_24, to explore the full spectrum of educational attainment.
 
 ```{r}
 variable <- df$pctbachdeg18_24
+table(df$pctbachdeg18_24)
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctbachdeg18_24"] <- 1
 ```
 
 ### Variable *pcths25_over*
 
-Numerical variable that express the percentage of county residents ages 25 and over highest education attained a high school diploma.
+The variable *pcths25_over* represents the percentage of county residents aged 25 and over whose highest level of education is a high school diploma. 
 
-It doesn't have missing values but it have 18 outliers, non of the severe. It doesn't have a normal distribution.
+It ranges from 8.3% to 52.7%, with a mean of 34.73% and a median of 35.3%. The standard deviation is 7.07%. The skewness of -0.37 reflects a slight left skew, suggesting a concentration of values toward the higher end of the range. The Shapiro-Wilk test indicates that the normality assumption is rejected. The variable has 18 outliers, none of which are severe. The most frequent value is 35.6%, occurring 19 times.
+
 ```{r}
 variable <- df$pcths25_over
+table(variable)
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pcths25_over"] <- 1
 
@@ -426,13 +437,14 @@ outliers_df[res.var,"pcths25_over"] <- 1
 
 ### Variable *pctbachdeg25_over*
 
-Numerical variable that expresses the the percentage of country resident ages 25 and over highest education attained: Bachelor's degree. 
+The variable *pctbachdeg25_over* captures the percentage of county residents aged 25 and over with a bachelor's degree as their highest level of education.
 
-Firstly we can see that there is a huge left skewness and there is a relatively large number of outliers (62), from which just 3 are severe. From the plot we can already tell that no normal distribution is followed and a shapiro test over the variable confirms it.
+The distribution is positively skewed, with most counties at the lower end of the range (2.5% to 42.2%), while a few have much higher values. The mean is 13.3%, close to the median of 12.3%, with a standard deviation of 5.47%. Outliers are identified in 59 counties, including 3 severe ones. The variable does not follow a normal distribution.
 
--- op2 : mild = 59 | sev = 3
+This variable is essential for understanding higher education attainment in adults and its variability across counties. When analyzed alongside related variables like pcths25_over, it can help reveal regional educational trends.
 
 ```{r}
+table(df$pctbachdeg25_over)
 res.var <- summary_and_normality_check(df$pctbachdeg25_over)
 outliers_df[res.var,"pctbachdeg25_over"] <- 1
 ```
