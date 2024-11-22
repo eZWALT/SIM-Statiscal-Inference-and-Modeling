@@ -52,7 +52,8 @@ knitr::opts_chunk$set(
 )
 rm(list=ls())
 
-df <- read.csv("train.csv")
+train <- read.csv("train.csv")
+df <- train
 test <- read.csv("test.csv")
 
 library(moments)
@@ -344,16 +345,11 @@ outliers_df[res.var,"medianagefemale"] <- 1
 
 ### Variable *geography* :
 
-The variable *geography* is a categorical variable that specifies the name of the county for each observation. It contains no missing values and serves as a unique identifier for each row, as all values are distinct. Additionally, it includes the name of the state to which each county belongs. To potentially enhance the model, we propose extracting the state names from geography and creating a new factor representing states. This new factor could capture regional effects and improve the model's ability to identify patterns related to state-level characteristics.
+The variable *geography* is a categorical variable that specifies the name of the county for each observation. It contains no missing values and serves as a unique identifier for each row, as all values are distinct. Additionally, it includes the name of the state to which each county belongs. 
 
 ```{r}
 variable <- df$geography;
 table(variable)
-
-#Create new factor (in the train and test set)
-df$state <- sapply(strsplit(df$geography, ", "), function(x) x[2])
-test$state <- sapply(strsplit(test$geography, ", "), function(x) x[2])
-table(df$state)
 
 ```
 
@@ -623,6 +619,115 @@ outliers_df[res.var,"birthrate"] <- 1
 ```
 
 
+
+### Define factors 
+### *medincome* factor 
+
+We have created a factor for medincome by diving it into quartiles, categorizing counties into "Very Low", "Low", "Moderate" and "High" income levels. With this factor we'll try to simply the analysis and also allows us to capture non-linear relationships between income and the target variable.
+```{r}
+quantiles <- quantile(df$medincome, probs = c(0, 0.25, 0.5, 0.75, 1))
+df$f.income <- cut(
+  df$medincome,
+  breaks = quantiles,
+  labels = c("Very Low", "Low", "Moderate", "High"),
+  include.lowest = TRUE
+)
+
+```
+
+### *popest2015* factor
+
+```{r}
+quantiles <- quantile(df$popest2015, probs = c(0, 0.25, 0.5, 0.75, 1))
+df$f.population <- cut(
+  df$popest2015,
+  breaks = quantiles,
+  labels = c("Very Low", "Low", "Moderate", "High"),
+  include.lowest = TRUE
+)
+```
+
+### *geography* factor
+
+To potentially enhance the model, we propose extracting the state names from geography and creating a new factor representing states. This new factor could capture regional effects and improve the model's ability to identify patterns related to state-level characteristics.
+
+```{r}
+df$f.state <- sapply(strsplit(df$geography, ", "), function(x) x[2])
+test$state <- sapply(strsplit(test$geography, ", "), function(x) x[2])
+table(df$state)
+```
+
+### *education factor 18_24* factor
+
+To create the education level factor we first imputed missing values for the pctsomecol18_24 using its complementary relationship with the other education variables between 18 and 24 years old, ensuring data completeness. 
+```{r}
+
+miss_ids <- which(is.na(df$pctsomecol18_24)) 
+imp_values <- 100 - df$pctnohs18_24[miss_ids] - df$pcths18_24[miss_ids] - df$pctbachdeg18_24[miss_ids]
+variable <- df$pctsomecol18_24
+variable[miss_ids] <- imp_values
+
+quantiles_df <- quantile(df$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_2 <- quantile(variable, probs = seq(0,1,0.1), na.rm = FALSE)
+summary(variable)
+
+plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
+     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
+lines(seq(0, 1, 0.1), quantiles_2, col = "red", lwd = 2); 
+legend("topright", legend = c("df$pctsomecol18_24", "imp_pctsomecol"),
+       col = c("blue", "red"), lwd = 2)
+
+# add imputated values
+df$pctsomecol18_24 <- variable
+```
+
+Then we assigned weights to each education level (No HS = 1, HS = 2, Some College = 3, Bachelor = 4) and calculated a weighted average to represent the overall educational attainment for each county. The results were categorized into "Low Education", "Moderate Education" and "High Education" levels. This factor will help us capturing the impact of educational attainment on the target variable. 
+```{r}
+weights <- c(1,2,3,4)
+education_level <- rowSums(df[,c("pctnohs18_24", "pcths18_24", "pctsomecol18_24", "pctbachdeg18_24")] * weights) / 100 
+df$f.education <- cut(
+  education_level,
+  breaks = c(0, 1.5, 2.5, 4),
+  labels = c("Low Education", "Moderate Education", "High Education")
+)
+table(df$f.education)
+
+```
+
+### *education factor over-25* factor
+
+The education factor over-25 was created to summarize the educational attainment of county residents aged 25 and over. It is based on the ratio of the percentage of individuals with a bachelor's degree (pctbachdeg25_over) to those with only a high school diploma (pcths25_over). The factor categorizes counties into three levels: "Mostly High School" for a low prevalence of bachelor's degrees, "Balanced Education" for a similar proportion of both levels, and "Mostly Bachelor's" for counties where bachelor's degree attainment is more common.
+```{r}
+education_ratio <- df$pctbachdeg25_over / df$pcths25_over
+
+# Categorize based on the ratio
+df$f.education25_over <- cut(
+  education_ratio,
+  breaks = c(-Inf, 0.5, 1.0, Inf),
+  labels = c("Mostly High School", "Balanced Eduaction", "Mostly Bachelor's")
+)
+
+table(df$f.education25_over)
+```
+
+
+### *unemployment*
+
+The unemployment factor categorizes counties into three levels based on the percentage of unemployed residents aged 16 and over. Counties are classified as "Low Unemployment" (<5%), "Moderate Unemployment" (5-10%), or "High Unemployment" (>10%).
+
+```{r}
+df$f.unemployment <- cut(
+  df$pctunemployed16_over,
+  breaks = c(-Inf, 5, 10, Inf), 
+  labels = c("Low Unemployment", "Moderate Unemployment", "High Unemployment"),
+  right = FALSE
+)
+
+table(df$f.unemployment)
+```
+
+
+
 ## Data Quality Report 
 
 Now that all the variables have been slightly analyzed in terms of their meaning. Given that univariate outliers and NA values have already been computed and shown, only a ranking and a visual summary will be showcased to gather the main insights visually. 
@@ -738,53 +843,6 @@ catdes(anal_df, num.var=34, proba=0.05)
 ```
 
 ## Imputation
-
-### pctsomecol18_24
-
-Given the huge amount of null values, the impute PCA has not been able to replicate the original distribution of this messy variable. 
-```{r}
-num_vars <- df[sapply(df, is.numeric)]
-miss_ids <- which(is.na(df$pctsomecol18_24)) 
-res_imp <- imputePCA(num_vars)
-imp_pctsomecol <- res_imp$completeObs[, "pctsomecol18_24"]
-
-# Calculate the quantiles for validation
-quantiles_df <- quantile(df$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
-quantiles_imp <- quantile(imp_pctsomecol, probs = seq(0, 1, 0.1), na.rm = FALSE)
-
-plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
-     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
-lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
-legend("topright", legend = c("df$pctsomecol18_24", "imp_pctsomecol"),
-       col = c("blue", "red"), lwd = 2)
-
-
-#We won't impute the values!
-df[miss_ids, "pctsomecol18_24"] <- imp_pctsomecol[miss_ids]
-
-# --- op2 -- 
-summary(df$pctsomecol18_24)
-imp_values <- 100 - df$pctnohs18_24[miss_ids] - df$pcths18_24[miss_ids] - df$pctbachdeg18_24[miss_ids]
-pct2 <- df$pctsomecol18_24
-pct2[miss_ids] <- imp_values
-
-
-quantiles_2 <- quantile(pct2, probs = seq(0,1,0.1), na.rm = FALSE)
-summary(pct2)
-
-plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
-     xlab = "Quantile", ylab = "Value", main = "Quantile Comparison")
-
-lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2); 
-lines(seq(0, 1, 0.1), quantiles_2, col = "green", lwd = 2); 
-legend("topright", legend = c("df$pctsomecol18_24", "imp_pctsomecol","imputation2"),
-       col = c("blue", "red","green"), lwd = 2)
-
-# add imputated values
-df$pctsomecol18_24 <- pct2
-```
-
-
 ### pctemployed16_over 
 
 pctemployed16_over only contains 70 null values and the imputePCA function has been able of almost perfectly preserve the original distribution of the variable. Therefore, it is indeed worth to perform the imputation on the train data.
