@@ -444,8 +444,9 @@ The distribution is positively skewed, with most counties at the lower end of th
 This variable is essential for understanding higher education attainment in adults and its variability across counties. When analyzed alongside related variables like pcths25_over, it can help reveal regional educational trends.
 
 ```{r}
-table(df$pctbachdeg25_over)
-res.var <- summary_and_normality_check(df$pctbachdeg25_over)
+variable <- df$pctbachdeg25_over
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctbachdeg25_over"] <- 1
 ```
 
@@ -457,10 +458,10 @@ outliers_df[res.var,"pctbachdeg25_over"] <- 1
 Additionally, 82 missing values (NA) are present,which require further handling (imputation section).
 
 ```{r}
-table(df$pctemployed16_over)
-res.var <- summary_and_normality_check(df$pctemployed16_over)
+variable<-df$pctemployed16_over
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctemployed16_over"] <- 1
-
 ```
 
 ### Variable *pctunemployed16_over*
@@ -470,8 +471,9 @@ The variable *pctunemployed16_over* represents the percentage of county resident
 This variable, in conjunction with *pctemployed16_over*, provides a comprehensive view of the labor market across counties.
 
 ```{r}
-table(df$pctunemployed16_over)
-res.var <- summary_and_normality_check(df$pctunemployed16_over)
+variable<-df$pctunemployed16_over
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctunemployed16_over"] <- 1
 ```
 
@@ -484,8 +486,9 @@ The dataset identifies 17 outliers, but none are severe. These represent countie
 This variable holds significant importance due to its potential connection with the target variable, cancer target deathrate. Private health coverage likely plays a crucial role in access to healthcare services, early detection, and treatment of cancer, making it a key factor in understanding regional variations in cancer-related mortality.
 
 ```{r}
-table(df$pctprivatecoverage)
-res.var <- summary_and_normality_check(df$pctprivatecoverage)
+variable<- df$pctprivatecoverage
+table(variable)
+res.var <- summary_and_normality_check(variable);
 outliers_df[res.var,"pctprivatecoverage"] <- 1
 ```
 
@@ -496,8 +499,9 @@ The variable *pctprivatecoveragealone* represents the percentage of county resid
 This variable is closely related to pctprivatecoverage, which captures overall private health coverage, including public assistance.
 
 ```{r}
-table(df$pctprivatecoveragealone)
-res.var <- summary_and_normality_check(df$pctprivatecoveragealone)
+variable<-df$pctprivatecoveragealone
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctprivatecoveragealone"] <- 1
 ```
 
@@ -510,8 +514,9 @@ Its values range from 14.3% to 70.2%, with a mean of 41.29% and a median of 41.1
 This variable is integral to understanding employment-related health benefits, especially when analyzed alongside *pctprivatecoverage* and *pctprivatecoveragealone*.
 
 ```{r}
-table(df$pctempprivcoverage)
-res.var <- summary_and_normality_check(df$pctempprivcoverage)
+variable<-df$pctempprivcoverage
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctempprivcoverage"] <- 1
 ```
 
@@ -521,11 +526,11 @@ The numeric variable *pctpubliccoverage* represents the percentage of county res
 
 
 ```{r}
-table(df$pctpubliccoverage)
-res.var <- summary_and_normality_check(df$pctpubliccoverage)
+variable<- df$pctpubliccoverage
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctpubliccoverage"] <- 1
 ```
-
 
 ### Variable *pctpubliccoveragealone*
 
@@ -534,85 +539,86 @@ The variable *pctpubliccoveragealone* represents the percentage of county reside
 This variable should complement *pctprivatecoveragealone*, which measures private coverage without public assistance. Together, they should provide a complete view of the reliance on public versus private health coverage. Counties with higher *pctpubliccoveragealone* may reflect areas with greater socioeconomic challenges or fewer employer-provided insurance options.
 
 ```{r}
-table(df$pctpubliccoveragealone)
-res.var <- summary_and_normality_check(df$pctpubliccoveragealone)
+variable<-df$pctpubliccoveragealone
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctpubliccoveragealone"] <- 1
 ```
 
 ### Variable *pctwhite* 
 
-Numerical variable that represents the percent of county residents who identify as White.
+The variable *pctwhite* represents the percentage of county residents who identify as White. The values range from 12.27% to 99.69%, with a mean of 83.85% and a median of 89.9%. The interquartile range extends from 77.31% to 95.57%, indicating that the majority of counties have a high percentage of White residents. However, the standard deviation of 16.04% highlights notable variability across counties. The skewness of -1.63 indicates a strong left skew, meaning there are a small number of counties with significantly lower percentages of White residents. The Shapiro-Wilk test confirms that the data is not normally distributed. Outliers are present in 97 counties, of which 7 are severe.
 
-Both from the plot and from inferential methods we can easily discard that this variable is anywhere near normal, being a hugely right skewed variable. It contains 104 outliers from which 7 are severe.
-
-This points out that the vast majority of counties have a high percentage of white population.
-
--- op2 : mild = 97 | sev = 7 
+This variable is significant for understanding the racial composition of counties and how it may intersect with socioeconomic and health-related outcomes. For instance, its relationship with variables like *pctpubliccoverage* may provide insights into racial disparities in healthcare access or disease prevalence. 
 
 ```{r}
-res.var <- summary_and_normality_check(df$pctwhite)
+variable<- df$pctwhite
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctwhite"] <- 1
 ```
+
 ### Variable *pctblack*
 
-Numerical variable that represents the percent of county residents who identify as Black.
 
-There is a huge number of outliers (323), from which  99 are severe and there is also a huge left skewness, that points out that the vast majority of counties (except the outliers) have a rather low percentage of black folks. The distribution almost looks like a power law distribution (Zipf) therefore we can safely reject both with visualization and inferential methods that the distribution of this variable is not normal.
+The variable *pctblack* represents the percentage of county residents who identify as Black. The values range from 0% to 85.95%, with a mean of 9.08% and a median of 2.32%, indicating that most counties have a relatively small Black population. The interquartile range extends from 0.65% to 10.87%, and the standard deviation of 14.45% highlights substantial variability across counties. The skewness of 2.27 indicates a strong positive skew, meaning a small number of counties have significantly higher percentages of Black residents. The Shapiro-Wilk test confirms that the data is not normally distributed. There are 224 outliers, with 99 classified as severe, and the most frequent value is 0%, occurring in 44 counties.
 
--- op2: mild = 224 | sev = 99 
+This variable provides critical insights into the racial diversity of counties and the distribution of Black populations across regions. Comparing *pctblack* with *pctwhite*, *pctpubliccoverage*, or *pctpubliccoveragealone*, can shed light on racial disparities in access to healthcare, insurance coverage, or socioeconomic opportunities. Analyzing its relationship with cancer *target_deathrate* may help identify potential inequities in health outcomes tied to racial demographics.
 
 ```{r}
-res.var <- summary_and_normality_check(df$pctblack)
+variable<-df$pctblack
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctblack"] <- 1
 ```
+
 ### Variable *pctasian*
 
-Numerical variable that represents the percent of county residents who identify as Asian.
+The variable *pctasian* represents the percentage of county residents who identify as Asian. The values range from 0% to 37.16%, with a mean of 1.27% and a median of 0.55%, indicating that the majority of counties have a very low percentage of Asian residents. The interquartile range extends from 0.26% to 1.25%, with a standard deviation of 2.59%. The skewness of 7.10 indicates a highly positive skew, where a few counties have significantly higher percentages of Asian residents. The Shapiro-Wilk test confirms the data deviates strongly from normality. There are 198 outliers, of which 107 are severe, and the most frequent value is 0%, occurring in 107 counties.
 
-Pretty similarly to the last distribution, we have a heavily left skewed zipfian like distribution, with 305 outliers (from which 107 are severe), pointing out that the vast majority of counties have less than 3% of asian percentage.
+This variable highlights the uneven distribution of Asian populations across counties. The high skew and large number of outliers underscore the concentration of Asian residents in a few counties, likely in urban or metropolitan areas. Analyzing *pctasian* alongside other racial variables like *pctwhite* or *pctblack* and socioeconomic factors such as *pctprivatecoverage* or *pctpubliccoverage* can help explore racial and ethnic disparities in healthcare access, insurance coverage, and health outcomes.
 
--- op2: mild = 198 | sev = 107 
--- A: no acabo de entendre el resultat obtingut al boxplot dsp de mirar el histogarma
 ```{r}
-res.var <- summary_and_normality_check(df$pctasian)
-hist(df$pctasian , 50 )
+variable<-df$pctasian
+res.var <- summary_and_normality_check(variable)
+hist(variable , 1000 )
 outliers_df[res.var,"pctasian"] <- 1
 ```
+
 ### Variable *pctotherrace*
 
-Numerical variable that represents the percent of county residents who identify as any other race (Pacific islanders, arabians, saiyajins, namekians...).
-
-Again this variable, just like the last 2 presents a huge left skewness and zipfian like distribution with 283 outliers, from which 102 are severe. Again this sampled distribution is not normal.
-
--- op2 : mild = 181 | sev = 102 
+The variable *pctotherrace* represents the percentage of county residents identifying as a race other than White, Black, or Asian. It ranges from 0% to 41.93%, with a mean of 2.00% and a median of 0.78%. Most counties have very low values, as reflected in the interquartile range (0.29% to 2.11%) and the strong positive skew (4.99). Outliers are frequent (181 total, 102 severe), and the most common value is 0%, appearing in 79 counties. The Shapiro-Wilk test indicates a significant departure from normality.
 
 ```{r}
-res.var <- summary_and_normality_check(df$pctotherrace)
+variable<-df$pctotherrace
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctotherrace"] <- 1
 ```
+
 ### Variable *pctmarriedhouseholds*
 
-Numerical variable that represents the percent of married households.
+*pctmarriedhouseholds* represents the percentage of households that are married. 
 
-This variable contains 59 outliers from which 2 are severe and a noticeable left skewness. Visualization isn't that clear, but using inferential methods like shapiro test we reject the null hypothesis that this variable is normal. 
-
-op2: mild = 57 | sev = 2 
+Values range from 22.99% to 71.40%, with a mean of 51.40% and a median of 51.73%, indicating a fairly balanced distribution. The interquartile range spans from 47.85% to 55.48%, with a standard deviation of 6.45%. The skewness of -0.50 suggests a slight left skew, and the Shapiro-Wilk test indicates non-normality. There are 57 outliers, including 2 severe ones, and the most common value is 50%, occurring in 2 counties.
 
 ```{r}
-res.var <- summary_and_normality_check(df$pctmarriedhouseholds)
+variable<- df$pctmarriedhouseholds
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"pctmarriedhouseholds"] <- 1
 ```
 
 ### Variable *birthrate*
 
-Numerical variable that represents the number of births relative to number of women in that specific county. 
+The variable *birthrate* represents the number of births relative to the number of women in each county.
 
-Finally, this last variable contains a fair amount of outliers (121) from which 17 are severe. It also has a fair amount of left skewness. Both from visualization and shapiro testing we reject that this sample variable is normal.
-
-op2 : mild = 104 | sev = 17 
+Values range from 0 to 21.33, with a mean of 5.60 and a median of 5.36. The standard deviation is 1.93, and the skewness of 1.25 shows a moderate positive skew, with some counties having significantly higher birthrates. The Shapiro-Wilk test confirms non-normality. There are 104 outliers, including 17 severe ones.
 
 ```{r}
-res.var <- summary_and_normality_check(df$birthrate)
+variable<-df$birthrate
+table(variable)
+res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"birthrate"] <- 1
 ```
 
