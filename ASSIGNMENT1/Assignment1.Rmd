@@ -150,7 +150,7 @@ In this section, we undertake a crucial step in any data science project, partic
 Note that the explanatory data analysis is assessed using exclusively the train data, even though new variables and variable removals also impact the test dataset.
 
 
-## Univariate Descriptive Analysis & Data Quality Report
+## Univariate Descriptive Analysis
 
 In this initial phase, we analyze all variables in the dataset, highlighting their most significant characteristics. We also convert numeric variables that represent qualitative concepts into factors and consider creating new variables based on existing numeric ones.
 
@@ -451,12 +451,13 @@ outliers_df[res.var,"pctbachdeg25_over"] <- 1
 
 ### Variable *pctemployed16_over*
 
-Numerical variable that represents the percentage of county residents ages 16 and over, employed. 
 
-This variable contains over 82 NA values and has a slight right skewness and 11 mild outliers. Both inferential and visualization methods clearly point that the real distribution is extremely unliekly to be normal.
+*pctemployed16_over* represents the percentage of county residents aged 16 and over who are employed. It ranges from 23.9% to 80.1%, with a mean of 54.21% and a median of 54.5%. The data has a standard deviation of 8.22%. Its skewness of -0.34 suggests a slight left skew, meaning there are slightly more counties with higher employment percentages. The Shapiro-Wilk test rejects the normality assumption. There are 11 outliers, none of which are severe.
 
+Additionally, 82 missing values (NA) are present,which require further handling (imputation section).
 
 ```{r}
+table(df$pctemployed16_over)
 res.var <- summary_and_normality_check(df$pctemployed16_over)
 outliers_df[res.var,"pctemployed16_over"] <- 1
 
@@ -464,62 +465,80 @@ outliers_df[res.var,"pctemployed16_over"] <- 1
 
 ### Variable *pctunemployed16_over*
 
-Numerical variable that represents the percentage of county residents ages 16 and over, unemployed.
+The variable *pctunemployed16_over* represents the percentage of county residents aged 16 and over who are unemployed. It spans from a minimum of 0.7% to a maximum of 29.4%, with a mean of 7.86% and a median of 7.5%. The standard deviation is 3.46%, indicating moderate variability across counties. The distribution is positively skewed, with a skewness of 0.92, suggesting that while most counties have lower unemployment rates, a few exhibit significantly higher percentages. The Shapiro-Wilk test confirms that the normality assumption is rejected. There are 42 outliers, including 4 severe ones.
 
-This variable is heavily left skewed and contains over 46 outliers, of which 4 are severe. Despite the distrirbution looking almost normal there is a big number of outliers and a long heavy right tail. Applying a shapiro test we reject the hypothesis that the distribution is normal.
-
--- op2: mild = 42 | sev = 4 
+This variable, in conjunction with *pctemployed16_over*, provides a comprehensive view of the labor market across counties.
 
 ```{r}
+table(df$pctunemployed16_over)
 res.var <- summary_and_normality_check(df$pctunemployed16_over)
 outliers_df[res.var,"pctunemployed16_over"] <- 1
 ```
 
 ### Variable *pctprivatecoverage* 
 
-Numerical variable that represents the percentage of county residents with private health coverage.
+*pctprivatecoverage* is a numerical variable that reflects the percentage of county residents with private health coverage. The values span from 23.4% to 89.6%, with a median of 65.2% and a mean of 64.47%. The interquartile range is relatively narrow, from 57.5% (1st quartile) to 72.1% (3rd quartile), indicating that most counties have moderate to high levels of private health coverage. The standard deviation is 10.64%, showing some variability, while the skewness of -0.38 points to a slight left skew, with more counties concentrated at higher percentages. The distribution rejects the normality assumption, as confirmed by the Shapiro-Wilk test.
 
-Despite having no NA and just 17 mild outliers, this variable has a huge standard deviation and a right skewed mean. Applying a shapiro test we reject the hypothesis that the distribution is normal.
+The dataset identifies 17 outliers, but none are severe. These represent counties with exceptionally low private health coverage rates, offering insights into regional disparities. 
+
+This variable holds significant importance due to its potential connection with the target variable, cancer target deathrate. Private health coverage likely plays a crucial role in access to healthcare services, early detection, and treatment of cancer, making it a key factor in understanding regional variations in cancer-related mortality.
 
 ```{r}
+table(df$pctprivatecoverage)
 res.var <- summary_and_normality_check(df$pctprivatecoverage)
 outliers_df[res.var,"pctprivatecoverage"] <- 1
 ```
 
-### Variable *pctprivatecoveragealone* We should check if the imputation is good enough to decide if we remove the variable or we keep it 
+### Variable *pctprivatecoveragealone* 
 
-Numerical variable that represents the percentage of county residents with private health coverage alone (no public assistance at all).
+The variable *pctprivatecoveragealone* represents the percentage of county residents with private health coverage without any public assistance. It ranges from 16.8% to 78.9%, with a mean of 48.65% and a median of 49.0%, indicating that approximately half of the counties have coverage levels close to the central tendency. The interquartile range spans from 41.5% to 55.5%, with a standard deviation of 10.07%. The skewness of 0.02 indicates an almost symmetrical distribution, and the Shapiro-Wilk test suggests the data does not deviate significantly from normality. However, the variable contains 356 missing values (approximately 20% of the dataset), which may require imputation or exclusion strategies. There are 4 outliers, none of which are severe.
 
-The number of NA is humongous (356), but it has a small amount of mild outliers (4) and almost no skewness at all. Both using inferential and visualizations methods we cannot easily reject the hypothesis that this variable is not normal. So we can loosely say that is **normally** distributed.
-
--- op2 : After doing the Shapiro-Wilk test and obtaining a p_value = 0,14 we can not reject the null hypothesis, therefore this variable has a normal distribution. 
+This variable is closely related to pctprivatecoverage, which captures overall private health coverage, including public assistance.
 
 ```{r}
+table(df$pctprivatecoveragealone)
 res.var <- summary_and_normality_check(df$pctprivatecoveragealone)
 outliers_df[res.var,"pctprivatecoveragealone"] <- 1
 ```
+
 ### Variable *pctempprivcoverage* 
 
-Numerical variable that represents the percentage of county residents with employee-provided private health coverage. 
+*pctempprivcoverage* represents the percentage of county residents with employee-provided private health coverage.
 
-Despite the low number of outliers (7 mild), the absence of NA, the small left skewness and the median being almost equal to the mean, we should reject the null hypothesis that the distribution is normal with a 5% significance. However, with a smaller significance level than 3% we couldn't reject that this distribution is not normal. 
+Its values range from 14.3% to 70.2%, with a mean of 41.29% and a median of 41.1%, indicating a balanced central tendency. The interquartile range spans from 34.6% to 47.7%, with a standard deviation of 9.53%. The skewness is close to zero (0.11), suggesting a nearly symmetrical distribution, while the Shapiro-Wilk test indicates a slight deviation from normality for a confidence level of 99%, but is not rejected in a confidence of 95% (p-value = 0.02861). The variable contains 7 outliers, none of which are severe.
 
--- we should clarify which is the C.level at the begining of the project and then justify this part
+This variable is integral to understanding employment-related health benefits, especially when analyzed alongside *pctprivatecoverage* and *pctprivatecoveragealone*.
 
 ```{r}
+table(df$pctempprivcoverage)
 res.var <- summary_and_normality_check(df$pctempprivcoverage)
 outliers_df[res.var,"pctempprivcoverage"] <- 1
 ```
-### Variable *pctpubliccoveragealone*
 
-Numerical variable that represents the percent of county residents with government-provided health coverage alone.
+### Variable *pctpubliccoverage*
 
-This variable contains 21 mild outliers, a great left skewness and a long right tail. Performing an inferential test like shapiro we get a tiny p-value which makes us reject the hypothesis that the distribution is normal under any significance level.
+The numeric variable *pctpubliccoverage* represents the percentage of county residents with government-provided health coverage, which is not exclusive and may overlap with other types of coverage. It ranges from 11.2% to 62.7%, with a mean of 36.15% and a median of 36.3%, suggesting a balanced distribution around the central tendency. The interquartile range extends from 30.9% to 41.4%, and the standard deviation of 7.84% . The skewness of -0.03 reflects a nearly symmetrical distribution. The Shapiro-Wilk test suggests that the data does not significantly deviate from normality. There are 13 outliers, though none are classified as severe.
+
 
 ```{r}
+table(df$pctpubliccoverage)
+res.var <- summary_and_normality_check(df$pctpubliccoverage)
+outliers_df[res.var,"pctpubliccoverage"] <- 1
+```
+
+
+### Variable *pctpubliccoveragealone*
+
+The variable *pctpubliccoveragealone* represents the percentage of county residents with government-provided health coverage exclusively. The data ranges from 2.6% to 46.6%, with a mean of 19.15% and a median of 18.7%. Most counties fall within an interquartile range of 14.9% to 23%, while the standard deviation of 6.06% indicates moderate variability. The skewness of 0.47 suggests a slight positive skew, with more counties having lower values. The Shapiro-Wilk test indicates that the normality assumption is rejected, and there are 21 outliers, though none are severe.
+
+This variable should complement *pctprivatecoveragealone*, which measures private coverage without public assistance. Together, they should provide a complete view of the reliance on public versus private health coverage. Counties with higher *pctpubliccoveragealone* may reflect areas with greater socioeconomic challenges or fewer employer-provided insurance options.
+
+```{r}
+table(df$pctpubliccoveragealone)
 res.var <- summary_and_normality_check(df$pctpubliccoveragealone)
 outliers_df[res.var,"pctpubliccoveragealone"] <- 1
 ```
+
 ### Variable *pctwhite* 
 
 Numerical variable that represents the percent of county residents who identify as White.
@@ -596,7 +615,6 @@ op2 : mild = 104 | sev = 17
 res.var <- summary_and_normality_check(df$birthrate)
 outliers_df[res.var,"birthrate"] <- 1
 ```
-
 
 
 ## Data Quality Report 
