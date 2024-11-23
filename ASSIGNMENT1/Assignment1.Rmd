@@ -687,12 +687,12 @@ Then we assigned weights to each education level (No HS = 1, HS = 2, Some Colleg
 ```{r}
 weights <- c(1,2,3,4)
 education_level <- rowSums(df[,c("pctnohs18_24", "pcths18_24", "pctsomecol18_24", "pctbachdeg18_24")] * weights) / 100 
-df$f.education <- cut(
+df$f.education18_24 <- cut(
   education_level,
   breaks = c(0, 1.5, 2.5, 4),
   labels = c("Low Education", "Moderate Education", "High Education")
 )
-table(df$f.education)
+table(df$f.education18_24)
 
 ```
 
@@ -764,13 +764,10 @@ Outliers were analyzed to identify variables with the highest number of mild and
 ### Per individuals
 
 Per individuals, count:
-
-- Number of missing values
-- Number of errors
 - Number of outliers
 - Identify individuals considered as multivariant outliers.
 
-There are 362 obs without NA in any variable, 1144 obs with 1 variable with a NA value, 305 obs with 2 NA values and 20 obs with 3 NA values along the 33 variables of the dataset.
+Out of the total observations in the dataset, 1306 have no missing values across any of the 33 variables. Additionally, 371 observations contain a missing value in one variable, 128 observations have missing values in two variables 23 observations are missing values in three variables, and 3 variables have 4 missing values. This distribution highlights the extent and concentration of missing data, which will guide the imputation process.
 
 ```{r}
 #Number of missing values
@@ -778,7 +775,7 @@ na_counts <- rowSums(is.na(df))
 table(na_counts)
 ```
 
-Out of all observations, 971 do not exhibit any outliers across the variables, while 385 observations contain a single outlier in one variable. Interestingly, there is 1 observation were we identified outliers in 10 variables and another 10 observations that are outliers in 8 variables.
+Out of all observations, 982 do not exhibit any outliers across the variables, while 343 observations contain a single outlier in one variable. Interestingly, there are 4 observation were we identified outliers in 10 variables and another 4 observations that have outliers in 9 variables.
 ```{r}
 #Number of outliers per individual 
 outliers_counts <- rowSums(outliers_df)
@@ -786,17 +783,19 @@ table(outliers_counts)
 ```
 
 
-Considering over 20 numerical variables that contain few correlated variables and considering a 1% significance level, 209 multivariate outliers are found in the dataset.
+Considering over 20 numerical variables that contain few correlated variables and considering a 1% significance level, 227 multivariate outliers are found in the dataset.
 ```{r}
 #Identify individuals considered as multivariant outliers.
 df$avgdeathsperyear <- as.numeric(df$avgdeathsperyear)
 df$medincome <- as.numeric(df$medincome)
 df$popest2015 <- as.numeric(df$popest2015)
 
+summary(df)
 #Compute multivariant outliers and find their ids (24)
 subset_num_vars <- c(1,2,3:7,10:12,14:16, 18:20, 22,23, 25:33)
-res_mout <- Moutlier(df[,subset_num_vars], quantile=0.97, plot=T)
-mout_ids <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff))
+res_mout <- Moutlier(df[,subset_num_vars], quantile=0.97)
+
+mout_ids <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff)); length(mout_ids)
 
 #Reset graphical parameters and plot the outliers
 dev.off()
@@ -805,29 +804,25 @@ abline(v=res_mout$cutoff, col="red")
 abline(h=res_mout$cutoff, col="red")
 ```
 
-We can clearly see that for the number of outliers variable, the mean is around 1.39, and the third quantile around 2.0, however, we have a high standard devation of 1.935 pointing out at the presence of outliers in the number of outliers variable, suggesting there are several individuals with more than 2 outlier variables. This variable contains somewhat high correlation with pcths25_over, pchwhite, pctasian and other weak correlations.
-
-The number of missing values doesn't make much sense to be analyzed after removing 2 of the main problematic columns which contained several null values.
-
 Finally, looking at the multivariate factor profiling, we see that there is a global association between "mout" and "binnedinc", and we can see that there is a huge global association with quantitative variables pctotherrace and n_uout (Logically, the number of univariate outliers contributes to a possible multivariate outlier individual), followed by medianage looking at their eta squared values. Finally, we see looking at the mean values of the quantitative variables that in the case of an individual that is not a multivariate outlier, almost every single variable mean value is equal or close to the overall mean. However in the case of multivariate outliers we see huge discrepancies in the mean of pctasian, pctotherrace, n_out, popest2015, avgdeathsperyear and avganncount, which are way higher than the overall mean value. This may point out that the asian-otherrace populations and those with higher poulation or more average deaths per year, are more prone to be multivariate outliers. 
 
 
 ```{r}
-anal_df <- df
+bi_mvout_df <- df
 #Binary factor if its a  multivariate outlier
-anal_df$mout <- 0 
-anal_df[mout_ids, "mout"] <- 1
-anal_df$mout <- factor(anal_df$mout, labels=c("Not M.O", "Yes M.O"))
+bi_mvout_df$mout <- 0 
+bi_mvout_df[mout_ids, "mout"] <- 1
+bi_mvout_df$mout <- factor(bi_mvout_df$mout, labels=c("Not M.O", "Yes M.O"))
 #Number of univariate outlier variables for a given observation
-anal_df$n_uout <- rowSums(outliers_df)
+bi_mvout_df$n_uout <- rowSums(outliers_df)
 #Number of missing values in variables for a given observation 
-anal_df$n_miss <- rowSums(is.na(df))
+bi_mvout_df$n_miss <- rowSums(is.na(df))
 
-summary(anal_df[, c("mout", "n_uout", "n_miss")]); sd(anal_df$n_uout); sd(anal_df$n_miss)
-num_vars <- anal_df[sapply(anal_df, is.numeric)]
+summary(bi_mvout_df[, c("mout", "n_uout", "n_miss")]); sd(bi_mvout_df$n_uout); sd(bi_mvout_df$n_miss)
+num_vars <- bi_mvout_df[sapply(bi_mvout_df, is.numeric)]
 corrplot(cor(num_vars))
 
-catdes(anal_df, num.var=34, proba=0.05)
+catdes(bi_mvout_df, num.var=34, proba=0.05)
 ```
 
 ### Imputation
@@ -884,7 +879,7 @@ summary(df)
 
 ### *incidencerate* // *avganncount* 
 
-Finally, we completed the imputation process for the two variables where 126 erroneous values were replaced with NA. After performing the imputation, we verified that the imputed values aligned well with the expected distribution, ensuring their accuracy. These updated values were then integrated into the main dataframe.
+Finally, we completed the imputation process for the two variables where 126 erroneous values were replaced with NA and the medianage variable in which we removed 18 erroneos values. After performing the imputation, we verified that the imputed values aligned well with the expected distribution, ensuring their accuracy. These updated values were then integrated into the main dataframe.
 To conclude, we confirmed that all variables in the dataset have no missing values by using the summary() function.
 ```{r}
 imp.res <- imputation_function("incidencerate")
@@ -893,6 +888,8 @@ df[imp.res$na_indexs,"incidencerate"] = imp.res$imp_values
 imp.res <- imputation_function("avganncount")
 df[imp.res$na_indexs,"avganncount"] = imp.res$imp_values
 
+imp.res <- imputation_function("medianage")
+df[imp.res$na_indexs,"medianage"] = imp.res$imp_values
 summary(df)
 ```
 
