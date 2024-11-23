@@ -267,7 +267,7 @@ outliers_df[res.var,"povertypercent"] <- 1
 
 A significant feature of this variable is that 1,162 out of 1,831 counties (63.5%) have a value of 0, making this the most frequent value and dominating the distribution. Nearly all non-zero values are flagged as outliers due to their extreme deviation from the majority, with 307 identified as mild outliers, and 222 severe ones. 
 
-Given the predominance of zero values and the highly skewed nature, this variable may contribute more noise than predictive value to the model. **Removing it from both the training and test datasets is a reasonable decision to simplify the model and enhance its performance.**
+Given the predominance of zero values and the highly skewed nature, this variable may contribute more noise than predictive value to the model. Removing it from both the training and test datasets is a reasonable decision to simplify the model and enhance its performance.
 
 
 ```{r}
@@ -352,7 +352,6 @@ The variable *geography* is a categorical variable that specifies the name of th
 ```{r}
 variable <- df$geography;
 table(variable)
-
 ```
 
 ### Variable *percentmarried* 
@@ -385,7 +384,7 @@ The variable *pcths18_24* represents the percentage of county residents aged 18-
 
 Note that there is a county with a 0% (Greeley County, Kansas), which potentially is an error. 
 
-The values range from 0% to 72.5%, with a mean of 35% and a median of 34.7%. The standard deviation is 8.96%, indicating substantial variability in high school graduation rates across counties. The skewness is 0.22, suggesting a slight positive skew, meaning that most counties have lower percentages of residents with only a high school diploma, while a few counties exhibit higher values. The Shapiro-Wilk test confirms that the distribution is not normal. There are 32 outliers, none of which are severe. 
+The values range from 0% to 72.5%, with a mean of 35% and a median of 34.7%. The standard deviation is 8.96%, indicating substantial variability in high school graduation rates across counties. The skewness is 0.22, suggesting a slight positive skew, meaning that most counties have lower percentages of residents with only a high school diploma, while a few counties exhibit higher values. The Shapiro-Wilk test confirms that the distribution is not normal. There are 33 outliers, none of which are severe. 
 
 This variable is related to *pctnohs18_24* (the percentage of residents aged 18-24 without a high school diploma), and we can consider creating a factor variable for characterizing this relation.
 
@@ -494,7 +493,7 @@ outliers_df[res.var,"pctprivatecoverage"] <- 1
 
 The variable *pctprivatecoveragealone* represents the percentage of county residents with private health coverage without any public assistance. It ranges from 16.8% to 78.9%, with a mean of 48.65% and a median of 49.0%, indicating that approximately half of the counties have coverage levels close to the central tendency. The interquartile range spans from 41.5% to 55.5%, with a standard deviation of 10.07%. The skewness of 0.02 indicates an almost symmetrical distribution, and the Shapiro-Wilk test suggests the data does not deviate significantly from normality. However, the variable contains 356 missing values (approximately 20% of the dataset), which may require imputation or exclusion strategies. There are 4 outliers, none of which are severe.
 
-This variable is closely related to pctprivatecoverage, which captures overall private health coverage, including public assistance.
+This variable is closely related to *pctprivatecoverage*, which captures overall private health coverage, including public assistance.
 
 ```{r}
 variable<-df$pctprivatecoveragealone
@@ -621,11 +620,14 @@ outliers_df[res.var,"birthrate"] <- 1
 ```
 
 
+## Definition of factors
 
-### Define factors 
+In this section, we convert selected numerical variables into categorical variables (factors). This process enhances the dataset by grouping continuous data into meaningful categories, allowing the modeling process to capture patterns more effectively and potentially improving model fit. By creating factors, we enable the model to identify relationships and trends that might be obscured in the original numerical form.
+
 ### *medincome* factor 
 
 We have created a factor for medincome by diving it into quartiles, categorizing counties into "Very Low", "Low", "Moderate" and "High" income levels. With this factor we'll try to simply the analysis and also allows us to capture non-linear relationships between income and the target variable.
+
 ```{r}
 quantiles <- quantile(df$medincome, probs = c(0, 0.25, 0.5, 0.75, 1))
 df$f.income <- cut(
@@ -638,6 +640,8 @@ df$f.income <- cut(
 ```
 
 ### *popest2015* factor
+
+By defining this factor, we seek to divide the counties in four groups regarding its population. This way we can relate variables with the magnitude of each county.
 
 ```{r}
 quantiles <- quantile(df$popest2015, probs = c(0, 0.25, 0.5, 0.75, 1))
@@ -662,6 +666,7 @@ df$f.state <- as.factor(df$f.state)
 ### *education factor 18_24* factor
 
 To create the education level factor we first imputed missing values for the pctsomecol18_24 using its complementary relationship with the other education variables between 18 and 24 years old, ensuring data completeness. 
+
 ```{r}
 
 miss_ids <- which(is.na(df$pctsomecol18_24)) 
@@ -684,6 +689,7 @@ df$pctsomecol18_24 <- variable
 ```
 
 Then we assigned weights to each education level (No HS = 1, HS = 2, Some College = 3, Bachelor = 4) and calculated a weighted average to represent the overall educational attainment for each county. The results were categorized into "Low Education", "Moderate Education" and "High Education" levels. This factor will help us capturing the impact of educational attainment on the target variable. 
+
 ```{r}
 weights <- c(1,2,3,4)
 education_level <- rowSums(df[,c("pctnohs18_24", "pcths18_24", "pctsomecol18_24", "pctbachdeg18_24")] * weights) / 100 
@@ -698,7 +704,8 @@ table(df$f.education18_24)
 
 ### *education factor over-25* factor
 
-The education factor over-25 was created to summarize the educational attainment of county residents aged 25 and over. It is based on the ratio of the percentage of individuals with a bachelor's degree (pctbachdeg25_over) to those with only a high school diploma (pcths25_over). The factor categorizes counties into three levels: "Mostly High School" for a low prevalence of bachelor's degrees, "Balanced Education" for a similar proportion of both levels, and "Mostly Bachelor's" for counties where bachelor's degree attainment is more common.
+The education factor over-25 was created to summarize the educational attainment of county residents aged 25 and over. It is based on the ratio of the percentage of individuals with a bachelor's degree (*pctbachdeg25_over*) to those with only a high school diploma (*pcths25_over*). The factor categorizes counties into three levels: "Mostly High School" for a low prevalence of bachelor's degrees, "Balanced Education" for a similar proportion of both levels, and "Mostly Bachelor's" for counties where bachelor's degree attainment is more common.
+
 ```{r}
 education_ratio <- df$pctbachdeg25_over / df$pcths25_over
 
@@ -730,58 +737,76 @@ table(df$f.unemployment)
 
 
 
-### Data Quality Report 
+## Data Quality Report 
 
-Now that all the variables have been slightly analyzed in terms of their meaning. Given that univariate outliers and NA values have already been computed and shown, only a ranking and a visual summary will be showcased to gather the main insights visually. 
+This section provides a comprehensive overview of the dataset's quality, complementing the prior identification of univariate outliers and missing values with a visual summary to highlight key patterns and anomalies. The data quality report is structured into two parts: an analysis regarding the variables and a review of individual records (stating the number of outliers per individual and identifying multivariate outliers). 
 
-This quality report will be divided between variables and individuals of the dataset, and finally a multivariate outlier analysis will be performed.
+### Variables
 
-### Per variable 
-### Missing values and errors 
+This first part of the data quality report assesses the quality of the data regarding the variables.
 
-Upon examining the dataframe, we observed that 29 variables have no missing values. However, the majority of the null values are concentrated in the pctsomecol18_24 variable, with a total of 1376 missing values. These missing values were replaced using a calculation based on three complementary variables (pctnohs18_24, pcths18_24, and pctbachdeg18_24), ensuring consistency. This adjustment was made before creating the education_level factor to maintain the integrity of the data.
+#### Missing Values and Errors.
 
-Additionally, the pctemployed16_over variable contains 82 missing values, while pctprivatecoveragealone has 356. 
+The dataset originally contained missing values in three variables: *pctemployed16_over* (82 missing values), *pctprivatecoveragealone* (356 missing values), and *pctsomecol18_24* (1376 missing values). To address this, imputation methods will be applied to fill these gaps. Specifically, *pctsomecol18_24* values were calculated based on its numerical relationship with complementary variables *pctnohs18_24*, *pcths18_24*, and *pctbachdeg18_24*, ensuring the integrity of the data prior to creating the *education_level* factor.
 
-Lastly, we identified that avganncount and incidencerate each contained 126 erroneous values in the same observations. To improve the quality of the analysis and avoid introducing bias, these error values were replaced with NA. This adjustment allows for a more realistic and reliable analysis of the data moving forward.
+For *pctemployed16_over* and *pctprivatecoveragealone*, missing values will be imputed using the imputePCA method to preserve variable distributions.
 
-These missing values will be addressed through an imputation process, which will aim to preserve the original distribution of the variables while filling in the gaps. This ensures that the imputed values align with the overall dataset characteristics.
+Additionally, we found 126 erroneous values in *avganncount* and *incidencerate* across the same observations. These values were replaced with NA to avoid introducing bias, ensuring a more reliable analysis. 
 
-### Outliers
-Outliers were analyzed to identify variables with the highest number of mild and severe outliers, as these can significantly impact data distribution and model performance. Below are the top 5 variables ranked by the number of outliers in each category:
+All missing and erroneous values will be imputed in a manner that maintains the original characteristics of the dataset, supporting robust and unbiased modeling.
 
+#### Outliers.
 
-| Rank | Mild Outliers                | Severe Outliers                 |
-|------|---------------------------   |----------------------           |
-| 1    | pctprivatecoveragealone 360  | pctprivatecoveragealone   257   |
-| 2    | popest2015         252       | popest2015                162   |
-| 3    | avgdeathsperyear   225       | avgdeathsperyear          138   |
-| 4    | pctblack           224       | avganncount               131   |
-| 5    | avganncount        207       | pctasian                  107   |
+Outliers were thoroughly examined to identify variables with the highest counts of mild and severe cases, as these can distort data distribution and impact model performance. As stated in the statement, all outliers are retained.
+
+The table below highlights the top 5 variables ranked by the number of outliers in each category. This analysis aids in determining variables that may require transformation or additional handling to mitigate their influence.
 
 
+| Rank | Mild Outliers Variable        | Count               | Severe Outliers Variable     |                 Count |
+|------|-------------------------------|---------------------|------------------------------|-----------------------|
+| 1    | popest2015                    | 252                 | popest2015                   | 162                   |
+| 2    | avgdeathsperyear              | 225                 | avgdeathsperyear             | 138                   |
+| 3    | pctblack                      | 224                 | avganncount                  | 131                   |
+| 4    | avganncount                   | 207                 | pctasian                     | 107                   |
+| 5    | pctasian                      | 198                 | pctotherrace                 | 102                   |
 
-### Per individuals
 
-Per individuals, count:
-- Number of outliers
-- Identify individuals considered as multivariant outliers.
 
-Out of the total observations in the dataset, 1306 have no missing values across any of the 33 variables. Additionally, 371 observations contain a missing value in one variable, 128 observations have missing values in two variables 23 observations are missing values in three variables, and 3 variables have 4 missing values. This distribution highlights the extent and concentration of missing data, which will guide the imputation process.
+
+This ranking reveals that *pctprivatecoveragealone* stands out as having the most outliers in both mild and severe categories. Variables such as *popest2015* and *avgdeathsperyear*, *pctblack*, *avganncount*, and *pctasian* also exhibit significant outlier counts.
+
+
+### Individuals
+
+This second part of the data quality report assesses the number of outliers and missing values per individual and identifies which individuals are multivariate outliers.
+
+#### Number of missing values across individuals
+
+Out of the total observations in the dataset, 1306 have no missing values across any variable. Additionally, 371 observations contain a missing value in one variable, 128 observations have missing values in two variables, 23 observations have missing values in three variables, and 3 individuals have missing values in 4 variables( "Kiowa County, Kansas", "Meade County, Kansas", and "Dakota County, Minnesota").
 
 ```{r}
 #Number of missing values
 na_counts <- rowSums(is.na(df))
 table(na_counts)
+ll<- which(rowSums(is.na(df))==4); length(ll)
+df$geography[ll]
 ```
 
-Out of all observations, 982 do not exhibit any outliers across the variables, while 343 observations contain a single outlier in one variable. Interestingly, there are 4 observation were we identified outliers in 10 variables and another 4 observations that have outliers in 9 variables.
+#### Number of outliers across individuals
+
+Out of all observations, the dataset contains a distribution of outliers across various categories. Specifically, there are 982 observations without any outliers, 343 observations with one outlier, 146 observations with two outliers, 130 observations with three outliers, 93 observations with four outliers, 68 observations with five outliers, 25 observations with six outliers, 21 observations with seven outliers, 15 observations with eight outliers, and 4 observations with nine and ten outliers. The individuals with more outliers are "Loudoun County, Virginia", "Williamsburg city, Virginia", "Santa Clara County, California" ,and "Hamilton County, Indiana"
+
 ```{r}
 #Number of outliers per individual 
 outliers_counts <- rowSums(outliers_df)
 table(outliers_counts)
+ll<- which(rowSums(outliers_df)==10); length(ll)
+df$geography[ll]
+
 ```
 
+
+#### Multivariate outliers
 
 Considering over 20 numerical variables that contain few correlated variables and considering a 1% significance level, 227 multivariate outliers are found in the dataset.
 ```{r}
