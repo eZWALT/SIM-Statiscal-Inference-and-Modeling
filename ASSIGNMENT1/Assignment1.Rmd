@@ -1161,7 +1161,7 @@ To ensure the assumptions of linear modeling are met, appropriate transformation
 
 m1 <- lm(target_deathrate ~ pctpubliccoveragealone + incidencerate +
            povertypercent+pctbachdeg25_over+medincome+pctemployed16_over+ 
-           f.state + binnedinc + f.income + f.education25_over  + f.unemployment,
+           + binnedinc + f.income + f.education25_over  + f.unemployment,
          data = df)
 summary(m1)
 plot(m1)
@@ -1228,8 +1228,8 @@ The VIF function allows us to see that there is a lot of multicolinearity introd
 ```{r}
 m3 <- lm(target_deathrate ~ ((pctpubliccoveragealone) + sqrt(incidencerate) 
                              + log(povertypercent)+ pctbachdeg25_over +log(medincome)+
-                               log(pctemployed16_over))* (f.state + f.education25_over  
-                              + f.unemployment), data = df)
+                               log(pctemployed16_over)) +  (f.state + f.education25_over  
+                              + f.unemployment)^2, data = df)
 summary(m3)
 
 ```
@@ -1265,31 +1265,26 @@ Anova(m4)
 
 The residual standard error seems a bit too high. We will now assess a transformation to the target variable in order to try to reduce it while maintaining the R^2 values. 
 First we try a boxcox transformation of the target model. Since the lambda is around 0.8, we apply the boxcox transformation with this value. 
-Thanks to the boxcox transformation, we reduced the residual standard error to 6.12 ( which previously was 17.22), while the Adjusted R-quared keeps approximately the same(0.62). 
+Thanks to the boxcox transformation, we reduced the residual standard error to 4.633 ( which previously was 17.22), while the Adjusted R-quared keeps approximately the same(0.62), while the homoskedasticity has been greatly improved looking at the plots.
+
 
 ```{r}
 
-boxcox(target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
-    pctbachdeg25_over + log(medincome) + f.state  + f.unemployment + pctpubliccoveragealone:f.state + 
-    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + 
-    log(medincome):f.state + log(medincome):f.education25_over + 
-     + log(pctemployed16_over):f.state + 
-    log(pctemployed16_over):f.education25_over ,  data=df)
+res_box <- boxcox(target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + pctbachdeg25_over + log(medincome) + f.state + f.unemployment + pctpubliccoveragealone:f.state + pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + log(medincome):f.state + log(medincome):f.education25_over + + log(pctemployed16_over):f.state + log(pctemployed16_over):f.education25_over , data=df)
 
-lambda <- 0.8  # Box-Cox approx suggested lambda
-df$target_transformed <- (df$target_deathrate^lambda - 1) / lambda
+index <- which.max(res_box$y)
+lambda <- res_box$x[index];lambda
 
-m5 <- lm(formula = target_transformed ~ pctpubliccoveragealone + sqrt(incidencerate) + 
-    pctbachdeg25_over + log(medincome) + f.state  + f.unemployment + pctpubliccoveragealone:f.state + 
-    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + 
-    log(medincome):f.state + log(medincome):f.education25_over + 
-     + log(pctemployed16_over):f.state + 
-    log(pctemployed16_over):f.education25_over ,data = df)
+df$target_transformed <- (df$target_deathrate^lambda - 1) / lambda 
+
+m5 <- lm(formula = target_transformed ~ pctpubliccoveragealone + sqrt(incidencerate) + pctbachdeg25_over + log(medincome) + f.state + f.unemployment + pctpubliccoveragealone:f.state + pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + log(medincome):f.state + log(medincome):f.education25_over + + log(pctemployed16_over):f.state + log(pctemployed16_over):f.education25_over ,data = df)
+
 summary(m5)
-
+par(mfrow=c(2,2))
+plot(m5) 
 ```
 
-We still want to reduce the Residual standard error. In order to do it, we apply a log transformation to the transformet target variable, and obtain remarkable good results, reducing the Residual standard error to 0.08, and approximately maintaining the Adjusted R-squared
+We still want to reduce the Residual standard error. In order to do it, we apply a log transformation to the transformet target variable, and obtain remarkable good results, reducing the Residual standard error to 0.08, and approximately maintaining the Adjusted R-squared. 
 
 ```{r}
 m6 <- lm(formula = log(target_transformed) ~ pctpubliccoveragealone + sqrt(incidencerate) + 
@@ -1359,8 +1354,6 @@ This model has obtained the following results in the training data:
 First, we apply the same transformations to the test set target variable: 
 
 ```{r}
-
-lambda <- 0.8  
 test$target_transformed <- (test$target_deathrate^lambda - 1) / lambda
 test$target_transformed <- log(test$target_transformed)
 
@@ -1371,27 +1364,71 @@ We follow by predicting the values in the test set and measuring the accuracy ob
 ```{r}
 
 test$f.state <- factor(test$f.state, levels = levels(df$f.state))
-predictions <- predict(m6, newdata=test)
 
-# Handle NAs in predictions
-sum(is.na(predictions))
-valid_predictions <- predictions[!is.na(predictions)]
-valid_test_set <- test[!is.na(predictions), ]
+evaluate_model <- function(model, data, target_col, transformed_col = NULL, plot_results = TRUE, print_metrics = T) { 
+  # Generate predictions
+  predictions <- predict(model, newdata = data) 
+  # Handle NAs in predictions
+  valid_indices <- !is.na(predictions)
+  valid_predictions <- predictions[valid_indices]
+  valid_data <- data[valid_indices, ] 
+  # Determine the column to compare with predictions 
+  actual_values <- if (!is.null(transformed_col)) valid_data[[transformed_col]] else valid_data[[target_col]] 
+  # Calculate metrics
+  mse <- mean((valid_predictions - actual_values)^2)
+  rmse <- sqrt(mse)
+  ss_total <- sum((actual_values - mean(actual_values))^2)
+  ss_residual <- sum((actual_values - valid_predictions)^2)
+  r2 <- 1 - (ss_residual / ss_total)
+  
+  # Optionally Print metrics
+  if(print_metrics) { 
+    cat("Mean Squared Error (MSE):", mse, "\n")
+    cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+    cat("SStotal is: ", ss_total, "\n")
+    cat("SSresidual is: ",ss_residual, "\n")
+    cat("R-squared (R²):", r2, "\n") 
+  
+    } 
+  # Optionally plot predictions vs actual values
+  if (plot_results) { 
+    # Plot the actual vs predicted values
+    plot(actual_values, valid_predictions,
+         col = "grey", pch = 19, xlab = "Actual Values",
+         ylab = "Predicted Values", main = "Predicted vs. Actual Values")
+    abline(a = 0, b = 1, col = "red", lwd = 2.5)
+    mean_actual <- mean(actual_values, na.rm=T)
+    abline(h=mean_actual, col = "cyan", lwd=2.5) 
+    # Display SSresidual, SStotal, RMSE, MSE, and R² on the plot
+    text(x = max(actual_values) * 0.4, y = max(valid_predictions) * 0.82,
+         labels = paste(
+           "SS Residual:", round(ss_residual, 2), "\n",
+           "SS Total:", round(ss_total, 2), "\n",
+           "RMSE:", round(rmse, 2), "\n",
+           "MSE:", round(mse, 2), "\n",
+           "R²:", round(r2, 2), "\n",
+           "Mean Actual:", round(mean_actual, 2))
+            , pos = 4, cex = 0.8, col = "green"
+    )
+    legend("topright", legend = c("Predicted by the model", "Mean of Actual Values"),
+           col = c("red", "cyan"), pch = 19, cex = 0.8, box.lwd = 0.5
+    ) 
+    } 
+  # Return metrics and predictions
+  return(list( mse = mse, rmse = rmse, r2 = r2, predictions = predictions, ss_residual = ss_residual, ss_total = ss_total )) 
+}
 
-# Calculate MSE (Mean Squared Error) directly on the transformed values
-mse <- mean((valid_predictions - valid_test_set$target_transformed)^2)
-cat("Mean Squared Error (MSE):", mse, "\n")
+par(mfrow=c(1,1))
 
-# Calculate RMSE (Root Mean Squared Error)
-rmse <- sqrt(mse)
-cat("Root Mean Squared Error (RMSE):", rmse, "\n")
-
-# Calculate R-squared (R²) on the transformed values
-ss_total <- sum((valid_test_set$target_transformed - mean(valid_test_set$target_transformed))^2);ss_total
-ss_residual <- sum((valid_test_set$target_transformed - valid_predictions)^2); ss_residual
-r2 <- 1 - (ss_residual / ss_total)
-cat("R-squared:", r2, "\n")
+results <- evaluate_model( 
+                           model = definitivemodel,
+                           data = test,
+                           target_col = "target_deathrate",
+                           transformed_col = "target_transformed",
+                           plot_results = TRUE 
+                         )
 
 ```
 
-Note that the negative R-squared shows how the model performs worse than just using a basic model with the median of the test set. The evaluation of this model is very useful to see that obtaining best results in the training data is not always better;the bias-variance trade off must be considered in order to avoid overfitting and end up in a situation in which the model is not able to generalize propperly.
+
+Note that the negative R-squared shows how the model performs worse than just using a basic model with the average of the test set. The evaluation of this model is very useful to see that obtaining best results in the training data is not always better;the bias-variance trade off must be considered in order to avoid overfitting and end up in a situation in which the model is not able to generalize propperly.
