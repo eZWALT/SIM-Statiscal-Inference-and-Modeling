@@ -68,6 +68,8 @@ library(VIM)
 library(dplyr)
 library(ggplot2)
 library(AER)
+library(MASS)
+
 
 ```
 
@@ -1157,7 +1159,10 @@ To ensure the assumptions of linear modeling are met, appropriate transformation
 
 ```{r}
 
-m1 <- lm(target_deathrate ~ pctpubliccoveragealone + incidencerate + povertypercent+pctbachdeg25_over+medincome+pctemployed16_over+ f.state + binnedinc + f.income + f.education25_over  + f.unemployment, data = df)
+m1 <- lm(target_deathrate ~ pctpubliccoveragealone + incidencerate +
+           povertypercent+pctbachdeg25_over+medincome+pctemployed16_over+ 
+           f.state + binnedinc + f.income + f.education25_over  + f.unemployment,
+         data = df)
 summary(m1)
 plot(m1)
 
@@ -1199,7 +1204,7 @@ ggplot(df, aes(x = medincome, y = target_deathrate)) +
   geom_smooth(method = "lm", se = FALSE) +
   theme_minimal()
 
-#medincome
+#pctemployed16_over
 ggplot(df, aes(x = pctemployed16_over, y = target_deathrate)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
@@ -1210,59 +1215,112 @@ ggplot(df, aes(x = pctemployed16_over, y = target_deathrate)) +
 Apply transformations to variables which shown non-linear relations due to the high skewness of the distribution:
 
 ```{r}
-m2 <- lm(target_deathrate ~ (pctpubliccoveragealone) + sqrt(incidencerate) + log(povertypercent)+ pctbachdeg25_over +log(medincome)+log(pctemployed16_over)+ f.state + binnedinc + f.income + f.education25_over  + f.unemployment, data = df)
+m2 <- lm(target_deathrate ~ (pctpubliccoveragealone) + sqrt(incidencerate) + 
+           log(povertypercent)+ pctbachdeg25_over +log(medincome)+
+           log(pctemployed16_over)+ f.state + binnedinc + f.income + 
+           f.education25_over  + f.unemployment, data = df)
 summary(m2)
 vif(m2)
 ```
+
 The VIF function allows us to see that there is a lot of multicolinearity introduced by some variables. The variables that are introducing more multicolinearity to the model are: *binnedinc* (GVIF = 3910.12), *f.income* (GVIF=843.77). We remove them from the model
 
 ```{r}
-m3 <- lm(target_deathrate ~ ((pctpubliccoveragealone) + sqrt(incidencerate) + log(povertypercent)+ pctbachdeg25_over +log(medincome)+log(pctemployed16_over))* (f.state + f.education25_over  + f.unemployment), data = df)
+m3 <- lm(target_deathrate ~ ((pctpubliccoveragealone) + sqrt(incidencerate) 
+                             + log(povertypercent)+ pctbachdeg25_over +log(medincome)+
+                               log(pctemployed16_over))* (f.state + f.education25_over  
+                              + f.unemployment), data = df)
 summary(m3)
-vif(m3)
-
-#try in test
-
-m3_test <- lm(target_deathrate ~ ((pctpubliccoveragealone) + sqrt(incidencerate) + log(povertypercent)+ pctbachdeg25_over +log(medincome)+log(pctemployed16_over))* (f.state + f.education25_over  + f.unemployment), data = test)
-summary(m3_test)
 
 ```
 
 We use the step() function in order to see if there is any variable which is not significantly apporting to the model. The obtained model is the following: 
 
-lm(formula = target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
+lm(target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
     pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
     f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
     pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
     sqrt(incidencerate):f.education25_over + pctbachdeg25_over:f.state + 
     log(medincome):f.state + log(medincome):f.education25_over + 
     log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
-    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment, 
-    data = df)
+    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment, data = df)
+
+In order to simplify the model further, we applied the Anova function from the car package. After performing the Anova function multiple times, we found that the variables f.education25_over, log(pctemployed16_over), log(medincome):f.unemployment, log(pctemployed16_over):f.unemployment, and sqrt(incidencerate):f.education25_over do not significantly contribute to the model. As a result, we decided to remove them to simplify the model.
 
 ```{r}
 m4 <- step(m3)
 summary(m4)
 
-#try in test
-m4_test <- lm(formula = target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
-    pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
-    f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
-    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
-    sqrt(incidencerate):f.education25_over + pctbachdeg25_over:f.state + 
+m4<- lm(target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + f.state  + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + 
     log(medincome):f.state + log(medincome):f.education25_over + 
-    log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
-    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment, 
-    data = test)
-summary(m4_test)
+     + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over , data = df)
+
+summary(m4)
+Anova(m4)
 
 ```
 
 The residual standard error seems a bit too high. We will now assess a transformation to the target variable in order to try to reduce it while maintaining the R^2 values. 
+First we try a boxcox transformation of the target model. Since the lambda is around 0.8, we apply the boxcox transformation with this value. 
+Thanks to the boxcox transformation, we reduced the residual standard error to 6.12 ( which previously was 17.22), while the Adjusted R-quared keeps approximately the same(0.62). 
 
 ```{r}
 
-m5log <- lm(formula = log(target_deathrate) ~ pctpubliccoveragealone,2 + sqrt(incidencerate) + 
+boxcox(target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + f.state  + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + 
+    log(medincome):f.state + log(medincome):f.education25_over + 
+     + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over ,  data=df)
+
+lambda <- 0.8  # Box-Cox approx suggested lambda
+df$target_transformed <- (df$target_deathrate^lambda - 1) / lambda
+
+m5 <- lm(formula = target_transformed ~ pctpubliccoveragealone + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + f.state  + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + 
+    log(medincome):f.state + log(medincome):f.education25_over + 
+     + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over ,data = df)
+summary(m5)
+
+```
+
+We still want to reduce the Residual standard error. In order to do it, we apply a log transformation to the transformet target variable, and obtain remarkable good results, reducing the Residual standard error to 0.08, and approximately maintaining the Adjusted R-squared
+
+```{r}
+m6 <- lm(formula = log(target_transformed) ~ pctpubliccoveragealone + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + f.state  + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + pctbachdeg25_over:f.state + 
+    log(medincome):f.state + log(medincome):f.education25_over + 
+     + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over ,data = df)
+summary(m6)
+
+definitivemodel <- m6
+
+
+```
+
+
+## Influential data study 
+
+Given that the models are being quite negatively affected by influential data, an study of the aforementioned will be performed to address this issue.
+
+Thanks to the influencePlot function, we can see that the following observations (83,1168,1650,80,1389,1591,67,734,168) are potentially influencing strongly in the regression, and thus wee want to remove them:
+
+"Queen Anne's County, Maryland", "Merrimack County, New Hampshire", "Tippecanoe County, Indiana", "Dooly County, Georgia"   , "Marion County, West Virginia", "Grand County, Colorado", "St. Joseph County, Indiana", Natrona County, Wyoming", "Ocean County, New Jersey" . 
+
+```{r}
+
+influential <- influencePlot(definitivemodel,pch=19,id=list(method="noteworthy",n=3)); rownames(influential)
+df$geography[c(83,1168,1650,80,1389,1591,67,734,168)]
+df<- df[-c(83,1168,1650,80,1389,1591,67,734,168), ]
+
+m7 <- lm(formula = log(target_deathrate) ~ pctpubliccoveragealone + sqrt(incidencerate) +
     pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
     f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
     pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
@@ -1271,48 +1329,53 @@ m5log <- lm(formula = log(target_deathrate) ~ pctpubliccoveragealone,2 + sqrt(in
     log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
     log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment, 
     data = df)
-summary(m5log)
-
-boxcox(log(target_deathrate) ~ pctpubliccoveragealone,2 + sqrt(incidencerate) + 
-    pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
-    f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
-    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
-    sqrt(incidencerate):f.education25_over + pctbachdeg25_over:f.state + 
-    log(medincome):f.state + log(medincome):f.education25_over + 
-    log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
-    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment,  data=df)
+summary(m7)
 
 ```
 
-## Influential data study 
-
-Given that the models are being quite negatively affected by influential data, an study of the aforementioned will be performed to address this issue.
-```{r}
-
-
-
-
-```
-
-## Model validation
-
-In this section we will assess how well the model performs on the training data (train split) to ensure its robustness and capabilities, so we can assess under/over fitting.
-
-We will analyze the residuals to ensure that model assumptions are met and use R-squared as the main performance metric will the model will be computed by means of Ordinary least squares.
-
-```{r}
-
-#Include Code
-
-```
 
 ## Model evaluation
 
-Finally we will evaluate how well the model performs with unseen data (train split) to assess its forecasting capabilities, using the same R-squared performance metric.
+
+Once the model has been thoroughly studied, this last part evaluates the model in the test data to assess its forecasting capabilities. 
+
+First, we apply the same transformations to the test set target variable: 
 
 ```{r}
 
-#Include Code
+lambda <- 0.8  
+test$target_transformed <- (test$target_deathrate^lambda - 1) / lambda
+test$target_transformed <- log(test$target_transformed)
+
+```
+
+We follow by predicting the values in the test set and measuring the accuracy obtained: 
+
+```{r}
+
+test$f.state <- factor(test$f.state, levels = levels(df$f.state))
+
+predictions <- predict(definitivemodel, newdata=test)
+
+
+# Handle NAs in predictions
+sum(is.na(predictions))
+valid_predictions <- predictions[!is.na(predictions)]
+valid_test_set <- test[!is.na(predictions), ]
+
+# Calculate MSE (Mean Squared Error) directly on the transformed values
+mse <- mean((valid_predictions - valid_test_set$target_transformed)^2)
+cat("Mean Squared Error (MSE):", mse, "\n")
+
+# Calculate RMSE (Root Mean Squared Error)
+rmse <- sqrt(mse)
+cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+
+# Calculate R-squared (R²) on the transformed values
+ss_total <- sum((valid_test_set$target_transformed - mean(valid_test_set$target_transformed))^2);ss_total
+ss_residual <- sum((valid_test_set$target_transformed - valid_predictions)^2); ss_residual
+r2 <- 1 - (ss_residual / ss_total)
+cat("R-squared:", r2, "\n")
 
 ```
 
