@@ -1161,7 +1161,7 @@ To ensure the assumptions of linear modeling are met, appropriate transformation
 
 m1 <- lm(target_deathrate ~ pctpubliccoveragealone + incidencerate +
            povertypercent+pctbachdeg25_over+medincome+pctemployed16_over+ 
-           + binnedinc + f.income + f.education25_over  + f.unemployment,
+           f.state + binnedinc + f.income + f.education25_over  + f.unemployment,
          data = df)
 summary(m1)
 plot(m1)
@@ -1228,8 +1228,8 @@ The VIF function allows us to see that there is a lot of multicolinearity introd
 ```{r}
 m3 <- lm(target_deathrate ~ ((pctpubliccoveragealone) + sqrt(incidencerate) 
                              + log(povertypercent)+ pctbachdeg25_over +log(medincome)+
-                               log(pctemployed16_over)) +  (f.state + f.education25_over  
-                              + f.unemployment)^2, data = df)
+                               log(pctemployed16_over))* (f.state + f.education25_over  
+                              + f.unemployment), data = df)
 summary(m3)
 
 ```
