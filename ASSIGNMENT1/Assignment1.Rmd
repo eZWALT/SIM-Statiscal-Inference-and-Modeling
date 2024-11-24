@@ -51,6 +51,7 @@ knitr::opts_chunk$set(
   out.width='50%'
 )
 rm(list=ls())
+set.seed(1)
 
 train <- read.csv("train.csv")
 df <- train
@@ -64,6 +65,8 @@ library(missMDA)
 library(FactoMineR)
 library(corrplot)
 library(VIM)
+library(dplyr)
+
 
 ```
 
@@ -185,6 +188,7 @@ Additionally, a histogram with an overlaid normal curve underscores the substant
 
 
 ```{r}
+df$avgdeathsperyear <- as.numeric(df$avgdeathsperyear)
 variable <- df$avgdeathsperyear
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"avgdeathsperyear"] <- 1
@@ -192,14 +196,9 @@ outliers_df[res.var,"avgdeathsperyear"] <- 1
 
 ### Variable *target_deathrate* :
 
-*target_deathrate* is the numeric target variable of the dataset. While a more detailed analysis will be presented in subsequent sections, we introduce key insights regarding its distribution, missing values, and outliers here.
+*target_deathrate* is the numeric target variable of the dataset. We analyze it carefully in the subsequent section  **Target variable: Profiling and serial correlation**.
 
-The target variable is complete in the training sample, with no missing values. The median (178.3) and mean (178.8) are nearly identical, suggesting a symmetric distribution. This symmetry is further supported by visual inspections of the boxplot and histogram, both of which confirm the balanced nature of the data around its center.
-
-To evaluate normality, we performed the Shapiro-Wilk test. The resulting small p-value rejected the null hypothesis, indicating that the distribution deviates from normality despite its apparent symmetry. Thus, the target variable is not normally distributed.
-
-In terms of outliers, the variable contains 35 observations classified as outliers, including one severe case.
-```{r}
+```{r eval=TRUE}
 variable <- df$target_deathrate;
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"target_deathrate"] <- 1
@@ -230,6 +229,7 @@ outliers_df[res.var,"incidencerate"] <- 1
 The distribution is neither normal nor symmetric, as evidenced by the histogram, Shapiro-Wilk test, and skewness value (1.47), all indicating a right-skewed distribution with a long tail. Descriptive statistics show a minimum of 22,640, a maximum of 122,641 (Loudoun County, Virginia), and a mean of 47,278 with a standard deviation of 12,342. The median income is 45,454, with the first and third quartiles at 39.031 and 52.612, respectively. There are no missing values, but the variable contains 69 outliers, 15 of which are severe, all above the upper quartile. These findings suggest substantial variability and a pronounced concentration of counties with lower incomes compared to a smaller group with exceptionally high incomes.
 
 ```{r}
+df$medincome <- as.numeric(df$medincome)
 variable <- df$medincome;
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"medincome"] <- 1
@@ -242,7 +242,7 @@ outliers_df[res.var,"medincome"] <- 1
 It contains no missing values but has an extensive range and an extremely skewed distribution, as highlighted by a skewness value of 14.71 and a Shapiro-Wilk test confirming strong deviation from normality. The distribution is heavily right-skewed, with a mean of 106,841 significantly exceeding the median of 27,158, and a wide spread between the 1st quartile (12,191) and 3rd quartile (66,880). The variable includes 252 mild outliers and 162 severe outliers, all exceeding the upper whisker of the boxplot. The highest value, 10,170,292, corresponds to Los Angeles County, California. The standard deviation of 376,494 reflects the substantial variability, driven by a small number of extremely populous counties. This skewed distribution highlights the vast disparity in county populations, with most counties having smaller populations and a few extreme outliers significantly influencing the overall statistics.
 
 ```{r}
-
+df$popest2015 <- as.numeric(df$popest2015)
 variable <- df$popest2015;
 res.var <- summary_and_normality_check(variable)
 outliers_df[res.var,"popest2015"] <- 1
@@ -624,6 +624,8 @@ outliers_df[res.var,"birthrate"] <- 1
 
 In this section, we convert selected numerical variables into categorical variables (factors). This process enhances the dataset by grouping continuous data into meaningful categories, allowing the modeling process to capture patterns more effectively and potentially improving model fit. By creating factors, we enable the model to identify relationships and trends that might be obscured in the original numerical form.
 
+Note that new factor variables are created both in the training and test sets. 
+
 ### *medincome* factor 
 
 We have created a factor for medincome by diving it into quartiles, categorizing counties into "Very Low", "Low", "Moderate" and "High" income levels. With this factor we'll try to simply the analysis and also allows us to capture non-linear relationships between income and the target variable.
@@ -632,6 +634,14 @@ We have created a factor for medincome by diving it into quartiles, categorizing
 quantiles <- quantile(df$medincome, probs = c(0, 0.25, 0.5, 0.75, 1))
 df$f.income <- cut(
   df$medincome,
+  breaks = quantiles,
+  labels = c("Very Low", "Low", "Moderate", "High"),
+  include.lowest = TRUE
+)
+
+quantiles <- quantile(test$medincome, probs = c(0, 0.25, 0.5, 0.75, 1))
+test$f.income <- cut(
+  test$medincome,
   breaks = quantiles,
   labels = c("Very Low", "Low", "Moderate", "High"),
   include.lowest = TRUE
@@ -651,6 +661,16 @@ df$f.population <- cut(
   labels = c("Very Low", "Low", "Moderate", "High"),
   include.lowest = TRUE
 )
+
+quantiles <- quantile(test$popest2015, probs = c(0, 0.25, 0.5, 0.75, 1))
+test$f.population <- cut(
+  test$popest2015,
+  breaks = quantiles,
+  labels = c("Very Low", "Low", "Moderate", "High"),
+  include.lowest = TRUE
+)
+
+
 ```
 
 ### *geography* factor
@@ -661,6 +681,10 @@ To potentially enhance the model, we propose extracting the state names from geo
 df$f.state <- sapply(strsplit(df$geography, ", "), function(x) x[2])
 table(df$f.state)
 df$f.state <- as.factor(df$f.state)
+
+test$f.state <- sapply(strsplit(test$geography, ", "), function(x) x[2])
+table(test$f.state)
+test$f.state <- as.factor(test$f.state)
 ```
 
 ### *education factor 18_24* factor
@@ -686,6 +710,20 @@ legend("topright", legend = c("df$pctsomecol18_24", "imp_pctsomecol"),
 
 # add imputated values
 df$pctsomecol18_24 <- variable
+
+
+# Repeat the process for the test set
+miss_ids <- which(is.na(test$pctsomecol18_24)) 
+imp_values <- 100 - test$pctnohs18_24[miss_ids] - test$pcths18_24[miss_ids] - test$pctbachdeg18_24[miss_ids]
+variable <- test$pctsomecol18_24
+variable[miss_ids] <- imp_values
+
+quantiles_df <- quantile(test$pctsomecol18_24, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_2 <- quantile(variable, probs = seq(0,1,0.1), na.rm = FALSE)
+summary(variable)
+
+# add imputated values
+test$pctsomecol18_24 <- variable
 ```
 
 Then we assigned weights to each education level (No HS = 1, HS = 2, Some College = 3, Bachelor = 4) and calculated a weighted average to represent the overall educational attainment for each county. The results were categorized into "Low Education", "Moderate Education" and "High Education" levels. This factor will help us capturing the impact of educational attainment on the target variable. 
@@ -699,6 +737,13 @@ df$f.education18_24 <- cut(
   labels = c("Low Education", "Moderate Education", "High Education")
 )
 table(df$f.education18_24)
+
+education_level <- rowSums(test[,c("pctnohs18_24", "pcths18_24", "pctsomecol18_24", "pctbachdeg18_24")] * weights) / 100 
+test$f.education18_24 <- cut(
+  education_level,
+  breaks = c(-Inf, 1.5, 2.5, Inf),
+  labels = c("Low Education", "Moderate Education", "High Education")
+)
 
 ```
 
@@ -717,6 +762,17 @@ df$f.education25_over <- cut(
 )
 
 table(df$f.education25_over)
+
+#Same for test set
+education_ratio <- test$pctbachdeg25_over / test$pcths25_over
+
+# Categorize based on the ratio
+test$f.education25_over <- cut(
+  education_ratio,
+  breaks = c(-Inf, 0.5, 1.0, Inf),
+  labels = c("Mostly High School", "Balanced Eduaction", "Mostly Bachelor's")
+)
+
 ```
 
 
@@ -733,6 +789,14 @@ df$f.unemployment <- cut(
 )
 
 table(df$f.unemployment)
+
+#Same for test set:
+test$f.unemployment <- cut(
+  test$pctunemployed16_over,
+  breaks = c(-Inf, 5, 10, Inf), 
+  labels = c("Low Unemployment", "Moderate Unemployment", "High Unemployment"),
+  right = FALSE
+)
 ```
 
 
@@ -808,36 +872,103 @@ df$geography[ll]
 
 #### Multivariate outliers
 
-Considering over 20 numerical variables that contain few correlated variables and considering a 1% significance level, 227 multivariate outliers are found in the dataset.
+The *find_valid_moutlier* function identifies the largest combination of numeric variables without missing values that successfully executes the Moutlier function. By iterating through combinations of variables, starting with the largest possible subsets, this function ensures that the process for detecting multivariate outliers incorporates the maximum amount of information available.
+
 ```{r}
-#Identify individuals considered as multivariant outliers.
-df$avgdeathsperyear <- as.numeric(df$avgdeathsperyear)
-df$medincome <- as.numeric(df$medincome)
-df$popest2015 <- as.numeric(df$popest2015)
 
-summary(df)
-#Compute multivariant outliers and find their ids (24)
-subset_num_vars <- c(1,2,3:7,10:12,14:16, 18:20, 22,23, 25:33)
-res_mout <- Moutlier(df[,subset_num_vars], quantile=0.97)
+find_valid_moutlier <- function(df, quantile = 0.95) {
+  # Select numeric columns without NA
+  valid_numeric_columns <- which(sapply(df, is.numeric) & sapply(df, function(col) all(!is.na(col))))
+  
+  # Track total number of variables
+  num_vars <- length(valid_numeric_columns)
+  cat("Total numeric variables without NAs:", num_vars, "\n")
+  
+  # Start testing combinations from the largest size down to 1
+  for (k in num_vars:1) {
+    cat("Testing combinations of size", k, "\n")
+    
+    # Generate all combinations of size k
+    combo_indexes <- combn(valid_numeric_columns, k, simplify = FALSE)
+    total_combos <- length(combo_indexes)
+    cat("Total combinations of size", k, ":", total_combos, "\n")
+    
+    for (i in seq_along(combo_indexes)) {
+      combo <- combo_indexes[[i]]
+      combo_names <- names(df)[combo]
+      
+      # Attempt Moutlier function
+      result <- try({
+        res_mout <- Moutlier(df[, combo], quantile = quantile)
+        
+        # If successful, return the result immediately
+        cat("Valid combination found! Indexes:", paste(combo, collapse = ", "), "\n")
+        cat("Variable names:", paste(combo_names, collapse = ", "), "\n")
+        
+        multoutliers <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff))
+        cat("Number of multivariate outliers:", length(multoutliers), "\n")
+        
+        return(list(res_mout = res_mout, variables = combo_names, multoutliers = multoutliers))
+      }, silent = TRUE)
+      
+      # Check for errors and move to the next combination
+      if (inherits(result, "try-error")) {
+        cat("Combination failed.\n")
+      } else {
+        return(result)  # Stop at the first valid combination
+      }
+    }
+  }
+  
+  # If no valid combination is found
+  cat("No valid combination found.\n")
+  return(NULL)
+}
 
-mout_ids <- which((res_mout$md > res_mout$cutoff) & (res_mout$rd > res_mout$cutoff)); length(mout_ids)
 
-#Reset graphical parameters and plot the outliers
-dev.off()
-plot(x=res_mout$md, y=res_mout$rd, main="Classic Mahalanobis D vs Robust Mahalanobis D (M. Outliers)", col="blue")
-abline(v=res_mout$cutoff, col="red")
-abline(h=res_mout$cutoff, col="red")
 ```
 
-Finally, looking at the multivariate factor profiling, we see that there is a global association between "mout" and "binnedinc", and we can see that there is a huge global association with quantitative variables pctotherrace and n_uout (Logically, the number of univariate outliers contributes to a possible multivariate outlier individual), followed by medianage looking at their eta squared values. Finally, we see looking at the mean values of the quantitative variables that in the case of an individual that is not a multivariate outlier, almost every single variable mean value is equal or close to the overall mean. However in the case of multivariate outliers we see huge discrepancies in the mean of pctasian, pctotherrace, n_out, popest2015, avgdeathsperyear and avganncount, which are way higher than the overall mean value. This may point out that the asian-otherrace populations and those with higher poulation or more average deaths per year, are more prone to be multivariate outliers. 
+Since the Moutlier function depends on some stochastic processes, one can get different results when executing it several times. Thus, we comment the results obtained in one single execution, which has been selected carefully to represent the average values.
+
+We found 144 multivariate outliers, with the following IDs: 12, 18, 62, 70, 71, 73, 76, 94, 98, 101, 103, 104, 106, 110, 113, 123, 128, 162, 168, 218, 226, 229, 237, 254, 279, 284, 291, 294, 301, 364, 368, 372, 411, 434, 466, 474, 506, 527, 529, 540, 558, 562, 574, 588, 600, 603, 608, 613, 615, 623, 632, 634, 636, 652, 654, 719, 720, 734, 753, 784, 786, 793, 815, 817, 844, 847, 864, 883, 890, 892, 899, 902, 904, 934, 960, 971, 1016, 1046, 1091, 1093, 1094, 1095, 1096, 1112, 1113, 1120, 1122, 1124, 1135, 1137, 1139, 1144, 1154, 1157, 1160, 1168, 1171, 1180, 1183, 1190, 1223, 1227, 1238, 1243, 1246, 1247, 1388, 1389, 1395, 1398, 1411, 1413, 1420, 1468, 1496, 1522, 1525, 1547, 1559, 1577, 1599, 1607, 1609, 1615, 1617, 1623, 1633, 1636, 1637, 1639, 1641, 1643, 1648, 1669, 1670, 1675, 1679, 1680, 1681, 1689, 1692, 1700, 1736, 1794. 
+
+
+```{r}
+
+result <- find_valid_moutlier(df, quantile = 0.95)
+res.out <- result$res_mout; 
+mult.outliers <- result$multoutliers; length(mult.outliers)
+
+# Plot Multivariate Outliers
+dev.off()
+plot(res.out$md, res.out$rd)
+abline(h=res.out$cutoff, col="red", lty=2)
+abline(v=res.out$cutoff, col="red", lty=2)
+
+str(df)
+
+```
+
+Finally, we present the multivariate outlier profiling:
+
+The chi-square test results reveal significant relationships between the multivariate outliers and the categorical variables *f.state*, *f.population*, *f.education25_over*, *f.unemployment*, *f.income*.
+
+Multivariate outliers are more frequently associated with very low population sizes, higher proportions of bachelor's degrees among adults, and states like Texas, Alaska, New Mexico, and South Dakota. These outliers are also associated with extremes in unemployment levels and income categories, highlighting their distinct demographic and socioeconomic characteristics.
+
+The analysis of quantitative variables underscores the importance of several key factors in distinguishing outliers. The Eta-squared values reveal strong associations between outlier status and variables. As expected, multivariate outliers are highly associated with the number of univariate outliers (*n_uout*). Moreover, they are also globally associated with racial composition variables like *pctotherrace*,  *pctasian*, *pctwhite* and population estimates (*popest2015*). Other significant variables include average annual case counts (*avganncount*), poverty percentage, and high school education levels. These variables exhibit notable differences between outlier and non-outlier groups, underscoring their explanatory power.
+
+A closer look at the profiles of quantitative variables by cluster reveals distinct patterns. Multivariate outliers are characterized by higher percentages of Asian and Other(not white, black, asian) race populations, lower percentages of White residents, higher poverty levels, larger average annual counts, and younger median ages.
+
+Statistically significant differences between clusters confirm the importance of the identified variables in distinguishing multivariate outliers. Variables related to population demographics, education levels, and racial composition show the most pronounced separations between clusters. 
 
 
 ```{r}
 bi_mvout_df <- df
 #Binary factor if its a  multivariate outlier
 bi_mvout_df$mout <- 0 
-bi_mvout_df[mout_ids, "mout"] <- 1
+bi_mvout_df[mult.outliers, "mout"] <- 1
 bi_mvout_df$mout <- factor(bi_mvout_df$mout, labels=c("Not M.O", "Yes M.O"))
+table(bi_mvout_df$mout)
 #Number of univariate outlier variables for a given observation
 bi_mvout_df$n_uout <- rowSums(outliers_df)
 #Number of missing values in variables for a given observation 
@@ -847,11 +978,15 @@ summary(bi_mvout_df[, c("mout", "n_uout", "n_miss")]); sd(bi_mvout_df$n_uout); s
 num_vars <- bi_mvout_df[sapply(bi_mvout_df, is.numeric)]
 corrplot(cor(num_vars))
 
-catdes(bi_mvout_df, num.var=34, proba=0.05)
+catdes(bi_mvout_df, num.var=39, proba=0.05)
 ```
 
 ### Imputation
-### Function
+
+In this section, all the missing values previously identified are addressed through an imputation process. To avoid repetitive code, a function is first defined to perform the imputation consistently across variables. The imputation is then carried out for each variable with missing values, and a brief commentary is provided for each to discuss the imputation approach and its impact on the data.
+
+Note that values are imputed both in the training and test sets, as stated in the statement of the project. 
+
 ```{r}
 imputation_function <- function(variable) {
 
@@ -880,32 +1015,67 @@ imputation_function <- function(variable) {
 
 }
 
+imputation_function_test <- function(variable) {
+
+  num_vars <- test[sapply(test, is.numeric)]
+  miss_ids <- which(is.na(test[[variable]]))
+
+  # Perform PCA-based imputation
+  res_imp <- imputePCA(num_vars)
+  imp_values <- res_imp$completeObs[, variable]
+  
+  # Calculate quantiles for validation
+  quantiles_df <- quantile(test[[variable]], probs = seq(0, 1, 0.1), na.rm = TRUE)
+  quantiles_imp <- quantile(imp_values, probs = seq(0, 1, 0.1), na.rm = FALSE)
+  
+  # Plot the quantile comparison
+  plot(seq(0, 1, 0.1), quantiles_df, type = "l", col = "blue", lwd = 2,
+       xlab = "Quantile", ylab = "Value", main = paste("Quantile Comparison for", variable))
+  lines(seq(0, 1, 0.1), quantiles_imp, col = "red", lwd = 2)
+  legend("topright", legend = c(variable, paste("imp_", variable, sep = "")),
+         col = c("blue", "red"), lwd = 2)
+  
+  return(list(
+    na_indexs = miss_ids,
+    imp_values = imp_values[miss_ids]
+  ))
+
+}
+
 ```
 
 ### *pctemployed16_over* 
 
-The variable pctemployed16_over contains only 82 missing values, making imputation a feasible solution to preserve data completeness. Using the imputePCA function, we were able to nearly perfectly replicate the original distribution of the variable. This is validated through a quantile comparison plot, where the imputed values (red line) align closely with the original distribution (blue line). Given this alignment, the imputation effectively maintains the variable's integrity and is a valuable step for ensuring high-quality data for modeling. The imputed values were subsequently incorporated into the dataset.
+The variable *pctemployed16_over* presented 82 missing values, a relatively small number, making it suitable for imputation to preserve the dataset’s completeness. Using the imputePCA function, the imputation process successfully replicated the original distribution of the variable. This outcome was validated through a quantile comparison plot, where the imputed values (represented by a red line) closely matched the original distribution (blue line). The strong alignment between the two confirms that the imputation method effectively preserved the integrity of the variable’s distribution
 
 ```{r}
 imp.res <- imputation_function("pctemployed16_over")
 df[imp.res$na_indexs,"pctemployed16_over"] = imp.res$imp_values
+
+imp.res <- imputation_function_test("pctemployed16_over")
+test[imp.res$na_indexs,"pctemployed16_over"] = imp.res$imp_values
 ```
 
 ### *pctprivatecoveragealone* 
 
-Similarly, the variable pctprivatecoveragealone, despite having a relatively high number of missing values (356), benefits significantly from imputation. The imputePCA function has successfully preserved the original distribution of the variable, ensuring that the imputed values align closely with the observed data. Therefore, performing imputation on the training dataset is a valuable and effective step.
+The variable *pctprivatecoveragealone*, with a relatively high number of missing values (356), has shown substantial improvement after imputation. By employing the imputePCA function, the original distribution has been effectively preserved, as evidenced by the close alignment of the imputed and observed data.
 
 ```{r}
 imp.res <- imputation_function("pctprivatecoveragealone")
 df[imp.res$na_indexs,"pctprivatecoveragealone"] = imp.res$imp_values
 summary(df)
+
+imp.res <- imputation_function_test("pctprivatecoveragealone")
+test[imp.res$na_indexs,"pctprivatecoveragealone"] = imp.res$imp_values
 ```
 
 
-### *incidencerate* // *avganncount* 
+### *incidencerate*,  *avganncount* and *medianage*
 
-Finally, we completed the imputation process for the two variables where 126 erroneous values were replaced with NA and the medianage variable in which we removed 18 erroneos values. After performing the imputation, we verified that the imputed values aligned well with the expected distribution, ensuring their accuracy. These updated values were then integrated into the main dataframe.
-To conclude, we confirmed that all variables in the dataset have no missing values by using the summary() function.
+Finally, the imputation process was completed for the two variables where 126 erroneous values were replaced with NA and the *medianage* variable, where 18 erroneous values were similarly addressed. After applying imputation, the resulting values were verified to align closely with the expected distributions, ensuring their reliability. These updated values were subsequently incorporated into the main dataframe. To conclude, a final check using the summary() function confirmed that all variables in the dataset are now free of missing values, ensuring data completeness for subsequent analyses.
+
+This is only done in the training set since we can't explore the test dataset, and therefore we can't assume we discovered wrong values in some individuals.
+
 ```{r}
 imp.res <- imputation_function("incidencerate")
 df[imp.res$na_indexs,"incidencerate"] = imp.res$imp_values
@@ -915,50 +1085,72 @@ df[imp.res$na_indexs,"avganncount"] = imp.res$imp_values
 
 imp.res <- imputation_function("medianage")
 df[imp.res$na_indexs,"medianage"] = imp.res$imp_values
+
 summary(df)
+summary(test)
+
 ```
 
-## Profiling & Relationships
+## Target variable: Profiling and correlation analysis.
 
-After imputation and removal of null values, we can proceed with profiling the target variable and assess if any variable contains serial correlation.
+The target variable is complete in the training sample, with no missing values. The median (178.3) and mean (178.8) are nearly identical, suggesting a symmetric distribution. This symmetry is further supported by visual inspections of the boxplot and histogram, both of which confirm the balanced nature of the data around its center.
 
-TODO: explicar correlacions.... (Cuidado, no cal explicar les correlacions de target_deathrate, ja estan just al apartat d'abaix!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
+To evaluate normality, we performed the Shapiro-Wilk test. The resulting small p-value rejected the null hypothesis, indicating that the distribution deviates from normality despite its apparent symmetry. Thus, the target variable is not normally distributed.
 
-```{r}
+In terms of outliers, the variable contains 35 observations classified as mild outliers, and one severe outlier.
 
-names(df)
-num_vars <- df[sapply(df, is.numeric)]
-cat_vars <- df[!sapply(df, is.numeric)]
-corrplot(cor(num_vars))
+```{r eval=TRUE}
+df$target_deathrate;
+summary_and_normality_check(variable)
 ```
 
-For some unexpected reason the geography categorical variable causes some unexpected problems to arise, therefore we won't use it at all. If you take a closer look at the profiling of this target variable you will realize that there is a high linkage between the target and the qualitative variable binnedinc performing a oneway anova test. If you take a look at the mean values for different values of binnedinc, you will see that those incomes which are below 40K have a higher deathrate (The lower the binned income the higher the deathrate). Conversely, the higher the binned income the lower the deathrate. Finally, taking a glance at the quantitative variables, we see that there is a medium-high positive correlation with pctpubliccoveragealone, povertypercent, pctpubliccoverage, pcths25_over and pctunemployed16_over. Looking at the inverse, we see a medium-high inverse correlation with variables medincome,  pctbachdeg25_over and pctprivatecoverage and pctmarriedhouseholds. 
+
+We use the condes() function of the FactoMiner package in order to profile the numeric target variable.
+
+Using the *quanti* output, we see how the most positively correlated variables with the target are *pctpubliccoveragealone*(0.466), *incidencerate*(0.456) and *povertypercent*(0.450). Moreover, the more negatively correlated are *pctbachdeg25_over* (-0.497), *medincome*(-0.443) and *pctemployed16_over*(-0.440). Moreover, we see that the following numeric variables are not significantly correlated with the target variable, and thus they will be not included in the model: *medianage*, *medianagemale*, *medianagefemale*.
+
+The *quali* output expresses that all factors defined but *feducation18_24* are significantly globally related with the target variable. Thus, this factor won't be included in the model. The most related one is f.state (R2 = 0.33), followed by binnedinc (R2=0.22) and f.income (R2=0.18).
+
+The *category* output shows how some individuals like those who have *f.income*=Very Low, *binnedinc*=[22640, 34218.1], *f.state*=Mississippi, *f.state*=Kentucky or *f.state*=Arkansas have estimates over the overall mean of the target variable. On the other hand, those who have *f.state*=Utah, *f.state*=Arizona, *f.state*=Colorado, *binnedinc*=(61494.5, 125635], among others, have estimates below the overall mean.
 
 
 ```{r}
-subset_num <- c(1,2,3:7,10:12,14:16, 18:20, 22,23, 25:33)
-subset_cat <- c(9)
-subset_df <- c(subset_num, subset_cat)
+cor(df[,which(sapply(df, is.numeric))])
 
-res_anal <- condes(df[, subset_df], num.var=3, proba=0.01)
-res_anal
+res.con <- condes(df[,-which(names(df)=="geography")],which(names(df)=="target_deathrate") )
+res.con$quanti
+non_significant_vars <- setdiff(names(df), c(rownames(res.con$quanti), "target_deathrate")); print(non_significant_vars)
+res.con$quali
+res.con$category
 ```
 
 ### Serial correlations
 
-It has been found previously that the target_variable doesn't follow a normal distribution at all, now its clear looking at the auto correlation function plot below that this variable contains serial correlation. To address this issue we will 
+The ACF plot for *target_deathrate* shows significant autocorrelation for several lags, with a gradual decline over time. The initial lags exceed the confidence intervals, indicating strong serial correlation. In order to assess the serial correlation, we introduce lagged variables to the train and test set. Since there are 21 bars out of the confidence interval in the ACF plot, we introduce 21 lag variables.
 
-```{r}
-library(stats)
+In the modeling section, we will test the models for the data sets with lags and assess whether there is serial correlation in the model with the Durbin-Watson test.
+
+
+```{r EVAL=TRUE}
 acf(df$target_deathrate)
 
-ids <- sample(1:nrow(df), nrow(df))
-df <- df[ids, ]
-acf(df$target_deathrate)
+add_lags <- function(df, target_var, num_lags) {
+  for (lag in 1:num_lags) {
+    lagged_col_name <- paste0("Lag_", lag) # Create column name, e.g., "Lag_1"
+    df[[lagged_col_name]] <- dplyr::lag(df[[target_var]], lag) # Add lagged variable
+  }
+  df <- na.omit(df)
+  return(df)
+}
+
+df_lags <- add_lags(df, target_var = "target_deathrate", num_lags = 21)
+test_lags <- add_lags(test, target_var = "target_deathrate", num_lags = 21)
+
 ```
 
 
 # Modeling
+
 ## Initial Model exploration and Multicollinearity study
 
 Firstly, it is important to realize that just as in past sections, the geography variable should just be used as a supplementary variable and not used for modelling purposes. Two initial models are built, one with all the numeric variables, and a second one containing all the numeric variables + all categorical variables.
@@ -1068,7 +1260,5 @@ Finally we will evaluate how well the model performs with unseen data (train spl
 #Include Code
 
 ```
-
-
 
 
