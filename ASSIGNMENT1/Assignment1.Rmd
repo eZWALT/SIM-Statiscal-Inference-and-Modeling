@@ -1300,8 +1300,6 @@ m6 <- lm(formula = log(target_transformed) ~ pctpubliccoveragealone + sqrt(incid
     log(pctemployed16_over):f.education25_over ,data = df)
 summary(m6)
 
-
-
 ```
 
 This model has obtained the following results in the training data: 
@@ -1312,20 +1310,33 @@ This model has obtained the following results in the training data:
 
 ## Bias-variance tradeoff
 
-This models give very good results, but are prone to overfit to the training data. We now try to equilibrate the bias-variance tradeoff by creating a less complex model:
+These models yield excellent results but are susceptible to overfitting the training data. To address this issue, we aim to balance the bias-variance tradeoff by constructing a simpler model. The steps we follow are:
+
+1. Build an initial model using all numeric variables.
+2. Address multicollinearity to eliminate insignificant variables.
+3. Introduce factors into the model.
+4. Use stepwise selection to refine and finalize the model.
+5. Incorporate meaningful interactions between numeric variables and factors, ensuring a limited number to minimize the risk of overfitting.
+
+The model obtains the following results in the training data: 
+
+- Residual standard error: 18.1 on 1745 degrees of freedom
+- Multiple R-squared:  0.5996
+- Adjusted R-squared:  0.5801 
 
 ```{r}
 
-m8 <- lm(target_deathrate ~ target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + 
-    popest2015 + pctpubliccoveragealone + povertypercent + pctbachdeg25_over + 
-    f.state + f.unemployment , data=df)
+m8 <- lm( target_deathrate ~ avganncount + avgdeathsperyear + sqrt(incidencerate) + 
+     pctblack + pctwhite+ pctotherrace+ pctasian +pctpubliccoveragealone + 
+    pctbachdeg25_over + pctnohs18_24 + pctsomecol18_24 + pctbachdeg18_24 + 
+    pctemployed16_over + pctempprivcoverage + pctmarriedhouseholds + 
+    f.state + f.unemployment + f.income + f.education25_over+ sqrt(incidencerate):f.unemployment + sqrt(incidencerate):f.income + sqrt(incidencerate):f.education25_over + avgdeathsperyear:f.unemployment + pctnohs18_24:f.unemployment  + pctwhite:f.income 
+    , data=df)
+
 summary(m8)
 plot(m8)
 
-m9<-step(m8)
 ```
-
-
 
 ## Influential data study 
 
@@ -1337,9 +1348,9 @@ Thanks to the influencePlot function, we can see that the following observations
 
 ```{r}
 
-#influential <- influencePlot(m6,pch=19,id=list(method="noteworthy",n=3)); rownames(influential)
-#df$geography[c(83,1168,1650,80,1389,1591,67,734,168)]
-#df<- df[-c(83,1168,1650,80,1389,1591,67,734,168), ]
+influential <- influencePlot(m8,pch=19,id=list(method="noteworthy",n=3)); rownames(influential)
+df$geography[c(899,70,67,734,860,600,168)]
+df<- df[-c(899,70,67,734,860,600,168), ]
 test[(which(test$f.state=="District of Columbia")),]
 test<-test[-562,]
 
@@ -1350,10 +1361,16 @@ test<-test[-562,]
 
 Once the model has been thoroughly studied, this last part evaluates the model in the test data to assess its forecasting capabilities. 
 
-We will test several models and comment each of them.
+We will test Model6 and Model8, to assess the diference between a model carefully built to handle the bias-variance tradeoff and avoid overfitting (Model6), and a model with better results in the training set which was built to get the best results in the training set.
 
 ### Model 8
 
+Using Model 8, we obtain the following results in the test set: 
+- Mean Squared Error (MSE): 324.9554 
+- Root Mean Squared Error (RMSE): 18.02652 
+- SStotal is:  918141.9 
+- SSresidual is:  394820.8 
+- R-squared (R²): -0.5706384
 ```{r}
 
 predictions<-predict.lm(
@@ -1368,10 +1385,8 @@ inverse_transform <- function(y){
 }
 
 predicted <- (predictions[,"fit"])
-
 target_test <- test$target_deathrate
-head(predicted)
-head(target_test)
+
 
 mse <- mean((predicted-target_test)^2); mse
 rmse <- sqrt(mean((predicted-target_test)^2)); rmse
@@ -1386,25 +1401,18 @@ r2 <- 1- ssres/sstot; r2
 
 ### Model 6
 
-This model has obtained the following results in the training data: 
+Using Model 6, we obtain the following results in the test set: 
+- Mean Squared Error (MSE): 0.0583265 
+- Root Mean Squared Error (RMSE): 0.2415088 
+- SStotal is:  17.62189 
+- SSresidual is:  70.8667 
+- R-squared (R²): -3.021516
 
-- Residual standard error: 0.08089 on 1535 degrees of freedom
-- Multiple R-squared:  0.6757,	
-- Adjusted R-squared:  0.6134 
-
-First, we apply the same transformations to the test set target variable: 
+Note that the negative R-squared shows how the model performs worse than just using a basic model with the average of the test set. The evaluation of this model is very useful to see that obtaining best results in the training data is not always better;the bias-variance trade off must be considered in order to avoid overfitting and end up in a situation in which the model is not able to generalize propperly.
 
 ```{r}
 test$target_transformed <- (test$target_deathrate^lambda - 1) / lambda
 test$target_transformed <- log(test$target_transformed)
-
-```
-
-We follow by predicting the values in the test set and measuring the accuracy obtained: 
-
-
-```{r}
-
 test$f.state <- factor(test$f.state, levels = levels(df$f.state))
 
 evaluate_model <- function(model, data, target_col, transformed_col = NULL, plot_results = TRUE, print_metrics = T) { 
@@ -1472,6 +1480,13 @@ results <- evaluate_model(
 
 ```
 
+## Conclusion
 
-Note that the negative R-squared shows how the model performs worse than just using a basic model with the average of the test set. The evaluation of this model is very useful to see that obtaining best results in the training data is not always better;the bias-variance trade off must be considered in order to avoid overfitting and end up in a situation in which the model is not able to generalize propperly.
+In conclusion, this project has shown the importance of several foundational aspects of a successful modeling process:
+
+- *Exploratory Data Analysis (EDA)*: The EDA process is fundamental to any data-driven project. It allows us to thoroughly understand the structure and nature of the data, uncover hidden patterns, and identify potential issues such as errors or missing values. EDA is also a key step in creating new, meaningful variables that can improve model performance. Without this critical step, a robust and reliable modeling project cannot exist. It lays the groundwork for all subsequent stages and ensures the data is well-prepared for analysis.
+
+- *Overfitting Awareness*: While achieving good results on the training set can be satisfying, it is essential to remain aware against overfitting. Overfitting occurs when a model becomes too tailored to the training data, capturing noise or insignificant patterns that do not generalize well to unseen data. This can result in poor forecasting and unreliable predictions. It is crucial to remember that the primary objective of modeling is not to optimize performance on the existing training data but to accurately predict new, unseen values. Additionally, overly small mean squared error (MSE) values might signal overfitting and should not be interpreted as the unique indicator of success. Instead, a comprehensive evaluation should include the R2 metric, which measures the proportion of variance in the data that the model captures. A high 
+R2 suggests that the model effectively explains the data's variability, making it a critical measure to consider alongside MSE.
+
 
