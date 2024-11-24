@@ -1305,6 +1305,11 @@ definitivemodel <- m6
 
 ```
 
+This model has obtained the following results in the training data: 
+
+- Residual standard error: 0.08089 on 1535 degrees of freedom
+- Multiple R-squared:  0.6757,	
+- Adjusted R-squared:  0.6134 
 
 ## Influential data study 
 
@@ -1339,6 +1344,18 @@ summary(m7)
 
 Once the model has been thoroughly studied, this last part evaluates the model in the test data to assess its forecasting capabilities. 
 
+We will test several models and comment each of them.
+
+### ALGUN MODEL QUE FUNCIONI "bé" i no faci overfit. fer el mateix que en el model 6
+
+### Model 6
+
+This model has obtained the following results in the training data: 
+
+- Residual standard error: 0.08089 on 1535 degrees of freedom
+- Multiple R-squared:  0.6757,	
+- Adjusted R-squared:  0.6134 
+
 First, we apply the same transformations to the test set target variable: 
 
 ```{r}
@@ -1354,9 +1371,7 @@ We follow by predicting the values in the test set and measuring the accuracy ob
 ```{r}
 
 test$f.state <- factor(test$f.state, levels = levels(df$f.state))
-
-predictions <- predict(definitivemodel, newdata=test)
-
+predictions <- predict(m6, newdata=test)
 
 # Handle NAs in predictions
 sum(is.na(predictions))
@@ -1379,4 +1394,4 @@ cat("R-squared:", r2, "\n")
 
 ```
 
-
+Note that the negative R-squared shows how the model performs worse than just using a basic model with the median of the test set. The evaluation of this model is very useful to see that obtaining best results in the training data is not always better;the bias-variance trade off must be considered in order to avoid overfitting and end up in a situation in which the model is not able to generalize propperly.
