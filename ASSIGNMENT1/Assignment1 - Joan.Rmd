@@ -1125,84 +1125,97 @@ res.con$category
 
 ### Serial correlations
 
-The ACF plot for *target_deathrate* shows significant autocorrelation for several lags, with a gradual decline over time. The initial lags exceed the confidence intervals, indicating strong serial correlation. In order to assess the serial correlation, the dataframe is randomized and reset. The new dataframe does not include autocorrelation anymore.
+The ACF plot for *target_deathrate* shows significant autocorrelation for several lags, with a gradual decline over time. The initial lags exceed the confidence intervals, indicating strong serial correlation. In order to assess the serial correlation, we introduce lagged variables to the train and test set. Since there are 21 bars out of the confidence interval in the ACF plot, we introduce 21 lag variables.
+
+In the modeling section, we will test the models for the data sets with lags and assess whether there is serial correlation in the model with the Durbin-Watson test.
 
 
 ```{r EVAL=TRUE}
 acf(df$target_deathrate)
-ll<- sample(1:nrow(df), nrow(df))
-df<-df[ll,]
-acf(df$target_deathrate)
+
+add_lags <- function(df, target_var, num_lags) {
+  for (lag in 1:num_lags) {
+    lagged_col_name <- paste0("Lag_", lag) # Create column name, e.g., "Lag_1"
+    df[[lagged_col_name]] <- dplyr::lag(df[[target_var]], lag) # Add lagged variable
+  }
+  df <- na.omit(df)
+  return(df)
+}
+
+df_lags <- add_lags(df, target_var = "target_deathrate", num_lags = 21)
+test_lags <- add_lags(test, target_var = "target_deathrate", num_lags = 21)
 
 ```
 
 
 # Modeling
 
-## Initial Model exploration and Multicollinearity study
+## Model Exploration
 
-Firstly, it is important to realize that just as in past sections, the geography variable should just be used as a supplementary variable and not used for modelling purposes. Two initial models are built, one with all the numeric variables, and a second one containing all the numeric variables + all categorical variables.
+First model : All numeric variables but the ones that showed no correlation with the target: (*medianage*, *medianagefemale*, *medianagemale*) are included. The high VIF (Variance Inflation Factor) values in the model indicate significant multicollinearity among some predictors. 
 
-Both models explain roughly 51% and 52% of variance respectively (R2), and both have multiple significant slope coeffcients such as percentmarried, pctbachdeg25_over, pctemployed16_over, pctotherrace, avganncount, incidencerate, avgdeathsperyear and binnedinc level 7 among the ones with smallest p-values. 
-
-Looking at variance over inflation of the first model, we can see that there are several variables that contain a great amount of variance over inflation, pointing out the presence of multicollinearity. The main ranked variables that exceed the high VIF threshold (10) in both models:
-
-1. avgdeathsperyear
-2. pctpubliccoverage 
-3. popest2015 
-4. pctprivatecoveragealone 
-5. pctprivatecoverage 
-6. pctpubliccooveragealone
-7. avganncount
-8. percentmarried
-9. binnedinc 
-
-Exploring the residual analysis plots of each model, a common trend is easily identified. Due to the presence of extreme outliers, both models do not meet the linear model premises at all:
-
-1. Residuals vs Fitted plots look like residuals are random and do not follow any pattern except for a couple of extreme outliers, which distort the straight line, therefore we cannot claim linearity.
-2. Q-Q Residuals suggest that the residuals almost follow a normal distribution (are random), despite a few outlier and heavier tails than usual, therefore we cannot fully claim normality.
-3. Scale-Location plots show a slight curvature due to the outlier values that points out a possible small heteroscedasticity.
-4. Residuals vs Leverage confirms that despite almost all points have a quite low leverage, there are a small amount of highly leveraged points that distort the model in general (Specially observation 600).
 
 ```{r}
 
-
-m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, Lag_1 +data=df)
-
+m1 <- lm( target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 +pctbachdeg18_24+ pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=df)
 summary(m1)
 vif(m1)
-par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
-plot(m1, id.n=0)
 
-# Mixed (Categorical + numerical)
-m2 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + binnedinc, data=df)
+m1.lag <- lm( target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 +pctbachdeg18_24+ pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + Lag_1+Lag_2+Lag_3+Lag_4+Lag_5+Lag_6+Lag_7+Lag_8+Lag_9+Lag_10+Lag_11+Lag_12+Lag_13+Lag_14+Lag_15+Lag_16+Lag_17+Lag_18+Lag_19+Lag_20+Lag_21, data=df_lags)
+summary(m1.lag)
+vif(m1.lag)
 
+```
+
+
+Second model: We first remove the extremely high VIFs (>100): *pctnohs18_24*, *pcths18_24*, *pctsomecol18_24*, and *pctbachdeg18_24*. 
+
+```{r}
+m2 <- lm( target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + percentmarried + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=df)
 summary(m2)
 vif(m2)
-plot(m2)
+
 ```
 
-Following up, we will build m3, a modification of m2 removing some inflating variables (avgdeathsperyear, pctprivatecoveragealone, pctpubliccoveragealone, binnedinc, percentmarried, medianagefemale, medianagemale) which some of then are redundant. This is one approach for addressing multicollinearity in the model, another strategy could be to perform a dimensionality reduction technique like PCA. The results we get from this variable removal is a model with all the independent variables having a less than 10 VIF (However, we still have variables that are above 5 VIF like avganncount, popest2015...), yet still retaining over 50 R-squared. However, the residual analysis results are pretty much the same as in the past 2 models with minor improvements. Outliers keep distorting the model heavily. Anova nested model test confirms that is worth using the lighter model.
-
+Third model: We remove the higher VIFs values: *avgdeathsperyear*, *avganncount*, *pctprivatecoverage*, *pctprivatecoveragealone*, *pctempprivcoverage*, *pctpubliccoverage* and *pctpubliccoveragealone*. We obtain al VIF values under 10. 
 
 ```{r}
-
-m3 <- lm(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=df)
-vif(m3)
+m3 <- lm( target_deathrate ~ incidencerate + medincome + popest2015 + povertypercent + percentmarried + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, data=df)
 summary(m3)
-plot(m3)
+vif(m3)
 
-#anova(m3, m2)
 ```
 
-One further improvement for a following model would be to remove variables with high VIF and high p-value in the coefficient tests, like popest2015 or avganncount. Another possible improvement would be to retain binnedinc instead of its redundant counterpart medincome. 
-
+Fourth model: We delete all variables which we represented in factors that are remaining in the model:  *pctemployed16_over*, *pctunemployed16_over*, *pctwhite*, *popest2015*,*pctblack*,*pctasian*, *pctotherrace*, *medincome*, *pcths25_over*,*pctbachdeg25_over* . We obtained similar R^2 than in the first model and have simplified the model a lot. 
 
 ```{r}
-library(effects)
-plot(allEffects(m3))
+m4 <- lm( target_deathrate ~ incidencerate + povertypercent + percentmarried + pcths25_over + pctbachdeg25_over + pctmarriedhouseholds + birthrate, data=df)
+summary(m4)
+vif(m4)
 
 ```
+
+
+Fifth model: We introduce the factors and remove the *pctmarriedhouseholds* variable, which is the highest in VIF value. 
+
+```{r}
+m5 <- lm( target_deathrate ~ incidencerate + povertypercent + percentmarried + birthrate  + f.income + f.population + f.state + f.education18_24 + f.education25_over + f.unemployment ,data=df)
+summary(m5)
+vif(m5)
+
+```
+
+
+6 model:  
+
+```{r}
+m6 <- lm( target_deathrate ~ incidencerate + povertypercent + percentmarried + birthrate  + f.income + f.population + f.state + f.education18_24 + f.education25_over + f.unemployment ,data=df)
+summary(m6)
+vif(m6)
+
+```
+
+
 
 ## Model transformations
 
