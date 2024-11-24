@@ -66,7 +66,8 @@ library(FactoMineR)
 library(corrplot)
 library(VIM)
 library(dplyr)
-
+library(ggplot2)
+library(AER)
 
 ```
 
@@ -1139,92 +1140,158 @@ acf(df$target_deathrate)
 
 # Modeling
 
-## Initial Model exploration and Multicollinearity study
+## Model Exploration
 
-Firstly, it is important to realize that just as in past sections, the geography variable should just be used as a supplementary variable and not used for modelling purposes. Two initial models are built, one with all the numeric variables, and a second one containing all the numeric variables + all categorical variables.
+Base model:  Based on the results of the condes function executed earlier, the most relevant variables have been selected for inclusion in the model. These variables are as follows:
 
-Both models explain roughly 51% and 52% of variance respectively (R2), and both have multiple significant slope coeffcients such as percentmarried, pctbachdeg25_over, pctemployed16_over, pctotherrace, avganncount, incidencerate, avgdeathsperyear and binnedinc level 7 among the ones with smallest p-values. 
+- Numerical: *pctpubliccoveragealone*, *incidencerate*, *povertypercent*, *pctbachdeg25_over*, *medincome*, *pctemployed16_over*
+- Factors: *f.state*,  *binnedinc*, *f.income*, *f.education25_over*, *f.unemployment*
 
-Looking at variance over inflation of the first model, we can see that there are several variables that contain a great amount of variance over inflation, pointing out the presence of multicollinearity. The main ranked variables that exceed the high VIF threshold (10) in both models:
+As observed in the Residuals vs Fitted plot, the data does not appear to be homoscedastic, indicating non-constant variance in the residuals.
 
-1. avgdeathsperyear
-2. pctpubliccoverage 
-3. popest2015 
-4. pctprivatecoveragealone 
-5. pctprivatecoverage 
-6. pctpubliccooveragealone
-7. avganncount
-8. percentmarried
-9. binnedinc 
+The Q-Q Residuals plot reveals deviations from normality, particularly at the extremes of the X-axis, suggesting the presence of outliers.
 
-Exploring the residual analysis plots of each model, a common trend is easily identified. Due to the presence of extreme outliers, both models do not meet the linear model premises at all:
+In the Residuals vs Leverage plot, there are very few high-leverage points (only one notable case), which is favorable for the model. However, these high-leverage observations may be removed if deemed influential.
 
-1. Residuals vs Fitted plots look like residuals are random and do not follow any pattern except for a couple of extreme outliers, which distort the straight line, therefore we cannot claim linearity.
-2. Q-Q Residuals suggest that the residuals almost follow a normal distribution (are random), despite a few outlier and heavier tails than usual, therefore we cannot fully claim normality.
-3. Scale-Location plots show a slight curvature due to the outlier values that points out a possible small heteroscedasticity.
-4. Residuals vs Leverage confirms that despite almost all points have a quite low leverage, there are a small amount of highly leveraged points that distort the model in general (Specially observation 600).
+To ensure the assumptions of linear modeling are met, appropriate transformations will be applied to the data.
 
 ```{r}
 
-
-m1 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate, Lag_1 +data=df)
-
+m1 <- lm(target_deathrate ~ pctpubliccoveragealone + incidencerate + povertypercent+pctbachdeg25_over+medincome+pctemployed16_over+ f.state + binnedinc + f.income + f.education25_over  + f.unemployment, data = df)
 summary(m1)
-vif(m1)
-par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
-plot(m1, id.n=0)
+plot(m1)
 
-# Mixed (Categorical + numerical)
-m2 <- lm(target_deathrate ~ avganncount + avgdeathsperyear + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + medianagefemale + medianagemale + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctprivatecoverage + pctprivatecoveragealone + pctempprivcoverage + pctpubliccoverage + pctpubliccoveragealone + pctwhite + pctblack + pctasian + pctotherrace + pctmarriedhouseholds + birthrate + binnedinc, data=df)
+```
 
+Following, we present several plots of the relationship between the target varriable and the numeric variables, in order to know if they should be transformed. 
+
+By the interpretation of the scatterplots of the target variable vs. the numeric variables *incidencerate*, *poverypercent*, *medincome*, and *pctemployed16_over* variables seem to require a transformation. In the next model, we transform them to avoid 
+
+
+```{r}
+#Incidencerate
+ggplot(df, aes(x = (incidencerate), y = target_deathrate)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+
+#pctpubliccoveragealone
+ggplot(df, aes(x = pctpubliccoveragealone, y = target_deathrate)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+
+#povertypercent
+ggplot(df, aes(x = povertypercent, y = target_deathrate)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+
+#pctbachdeg25_over
+ggplot(df, aes(x = pctbachdeg25_over, y = target_deathrate)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+
+#medincome
+ggplot(df, aes(x = medincome, y = target_deathrate)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+
+#medincome
+ggplot(df, aes(x = pctemployed16_over, y = target_deathrate)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+
+```
+
+Apply transformations to variables which shown non-linear relations due to the high skewness of the distribution:
+
+```{r}
+m2 <- lm(target_deathrate ~ (pctpubliccoveragealone) + sqrt(incidencerate) + log(povertypercent)+ pctbachdeg25_over +log(medincome)+log(pctemployed16_over)+ f.state + binnedinc + f.income + f.education25_over  + f.unemployment, data = df)
 summary(m2)
 vif(m2)
-plot(m2)
 ```
-
-Following up, we will build m3, a modification of m2 removing some inflating variables (avgdeathsperyear, pctprivatecoveragealone, pctpubliccoveragealone, binnedinc, percentmarried, medianagefemale, medianagemale) which some of then are redundant. This is one approach for addressing multicollinearity in the model, another strategy could be to perform a dimensionality reduction technique like PCA. The results we get from this variable removal is a model with all the independent variables having a less than 10 VIF (However, we still have variables that are above 5 VIF like avganncount, popest2015...), yet still retaining over 50 R-squared. However, the residual analysis results are pretty much the same as in the past 2 models with minor improvements. Outliers keep distorting the model heavily. Anova nested model test confirms that is worth using the lighter model.
-
+The VIF function allows us to see that there is a lot of multicolinearity introduced by some variables. The variables that are introducing more multicolinearity to the model are: *binnedinc* (GVIF = 3910.12), *f.income* (GVIF=843.77). We remove them from the model
 
 ```{r}
-
-m3 <- lm(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=df)
-vif(m3)
+m3 <- lm(target_deathrate ~ ((pctpubliccoveragealone) + sqrt(incidencerate) + log(povertypercent)+ pctbachdeg25_over +log(medincome)+log(pctemployed16_over))* (f.state + f.education25_over  + f.unemployment), data = df)
 summary(m3)
-plot(m3)
+vif(m3)
 
-#anova(m3, m2)
-```
+#try in test
 
-One further improvement for a following model would be to remove variables with high VIF and high p-value in the coefficient tests, like popest2015 or avganncount. Another possible improvement would be to retain binnedinc instead of its redundant counterpart medincome. 
-
-
-```{r}
-library(effects)
-plot(allEffects(m3))
+m3_test <- lm(target_deathrate ~ ((pctpubliccoveragealone) + sqrt(incidencerate) + log(povertypercent)+ pctbachdeg25_over +log(medincome)+log(pctemployed16_over))* (f.state + f.education25_over  + f.unemployment), data = test)
+summary(m3_test)
 
 ```
 
-## Model transformations
+We use the step() function in order to see if there is any variable which is not significantly apporting to the model. The obtained model is the following: 
 
-Possibly we need to perform some transformations...
+lm(formula = target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
+    f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
+    sqrt(incidencerate):f.education25_over + pctbachdeg25_over:f.state + 
+    log(medincome):f.state + log(medincome):f.education25_over + 
+    log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment, 
+    data = df)
+
 ```{r}
-#Exemple random ;)
-#boxcox(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=df)
+m4 <- step(m3)
+summary(m4)
 
-#boxTidwell(target_deathrate ~ avganncount + incidencerate + medincome + popest2015 + povertypercent + studypercap + medianage + percentmarried + pctnohs18_24 + pcths18_24 + pctsomecol18_24 + pcths25_over + pctbachdeg25_over + pctemployed16_over + pctunemployed16_over + pctempprivcoverage + pctpubliccoverage + pctprivatecoverage + pctwhite + pctblack + pctasian + pctotherrace + birthrate, data=df)
+#try in test
+m4_test <- lm(formula = target_deathrate ~ pctpubliccoveragealone + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
+    f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
+    sqrt(incidencerate):f.education25_over + pctbachdeg25_over:f.state + 
+    log(medincome):f.state + log(medincome):f.education25_over + 
+    log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment, 
+    data = test)
+summary(m4_test)
+
+```
+
+The residual standard error seems a bit too high. We will now assess a transformation to the target variable in order to try to reduce it while maintaining the R^2 values. 
+
+```{r}
+
+m5log <- lm(formula = log(target_deathrate) ~ pctpubliccoveragealone,2 + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
+    f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
+    sqrt(incidencerate):f.education25_over + pctbachdeg25_over:f.state + 
+    log(medincome):f.state + log(medincome):f.education25_over + 
+    log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment, 
+    data = df)
+summary(m5log)
+
+boxcox(log(target_deathrate) ~ pctpubliccoveragealone,2 + sqrt(incidencerate) + 
+    pctbachdeg25_over + log(medincome) + log(pctemployed16_over) + 
+    f.state + f.education25_over + f.unemployment + pctpubliccoveragealone:f.state + 
+    pctpubliccoveragealone:f.education25_over + sqrt(incidencerate):f.state + 
+    sqrt(incidencerate):f.education25_over + pctbachdeg25_over:f.state + 
+    log(medincome):f.state + log(medincome):f.education25_over + 
+    log(medincome):f.unemployment + log(pctemployed16_over):f.state + 
+    log(pctemployed16_over):f.education25_over + log(pctemployed16_over):f.unemployment,  data=df)
+
 ```
 
 ## Influential data study 
 
 Given that the models are being quite negatively affected by influential data, an study of the aforementioned will be performed to address this issue.
 ```{r}
-#Include Code
-```
 
-## Further model exploration
 
-```{r}
-#Include Code
+
+
 ```
 
 ## Model validation
