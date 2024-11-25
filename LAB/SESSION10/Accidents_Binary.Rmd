@@ -1,0 +1,199 @@
+---
+title: "Accidents_Binary"
+author: "Walter J.T.V"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Accidents 
+
+##  Data and Packages Loading
+
+```{r}
+
+library(car)
+library(AER)
+library(effects)
+library(lmtest)
+load("02-Accidents.RData")
+
+df <- acc
+df
+```
+
+## Questionaire 2
+
+### 1. Determine the proportion of accidents where the driver suffers severe damage. What are the odds of suffering severe damage? What is the logit of the probability of having severe damage in an accident?
+  
+```{r}
+
+#Marginal probability of the positive outcome
+
+prob <- sum(df$Severity.Severe) / (sum(df$Severity.Severe) + sum(df$Severity.Mild))
+prob
+
+```
+
+### 2. Calculate the null logistic regression model for the positive response defined as suffering severe damage in an accident.
+
+$$ i = 1/2 = Good/Bad \\ 
+   j = 1/2 = Night/Day $$
+
+In a generalized linear model (GLM) we need to specify the family/distribution of the model.
+
+$$ Null Model: logit(\pi_{ij}) = \eta$$
+
+The null logistic regression model is glm(Y ~ 1), where Y = cbind(). Using our data we get the estimate model:
+
+$$ \eta_{hat} = -1.98$$ 
+As we can see this estimate is exactly equal to the logit of the probability
+
+  
+```{r}
+?cbind
+#cbind (positive outcome, negative outcome)
+m0 <- glm(cbind(Severity.Severe, Severity.Mild) ~ 1, family=binomial, data=df)
+summary(m0)
+
+oddprob <- prob/(1-prob) #Get the odds
+log(oddprob) #Get the logarithmics odds (logits) 
+model.matrix(m0)
+```
+
+### 3. Calculate the null probit model for the positive response defined as suffering severe damage in an accident.
+
+Its the same but the link function used is different (probit link function) which is the inverse function of qnorm, qnorm(prob) = probit(prob). Probability is the area under the curve of the normal distribution, using qnorm we get the plane cut percentile. This is still a null model
+
+$$  probit(\pi_{ij}) = \eta$$
+
+```{r}
+
+p0 <- glm(cbind(Severity.Severe, Severity.Mild) ~ 1, data=df, family=binomial(link="probit"))
+summary(p0)
+
+qnorm(prob)
+p0$coefficients
+
+# Logit null model - percentile logistic distribution standard law
+qlogis(prob)
+```
+### 4. Calculate the logistic regression model with the gross effect of the ‘Time of the Day’ factor for the positive response defined as suffering severe damage in an accident.
+
+Now we are going to define a new model (non-null, therefore it has more parameters than the fucking intercept $$\eta$$): 
+
+$$ logit(\pi_{ij}) = \eta + \alpha_i$$
+This model gets a logit intercept of $$\eta = -2.12$$ and a categorical effect of TimeDay=night, which adds 0.25. 
+
+Lidia: Meaning **intercept** logic of probability of severe accident at Day (-2.12). The estimate of the dummy for Night indicates an additive effect on the logit sclae for accident at Night of 0.25.
+
+
+```{r}
+
+m1 <- glm(cbind(Severity.Severe, Severity.Mild) ~ TimeDay, family=binomial, data=df)
+summary(m1)
+
+exp(coef(m1)[2])
+100 * (exp(coef(m1)[2]) - 1)
+
+#probability scale approximation
+#Optimistic
+0.5 * (1-0.5) * coef(m1)[2]
+#Realistic
+prob * (1-prob) * coef(m1)[2]
+
+# Is it useful to add Tiemday to the model? 
+# 1.Anova test like usual but a fricking chisq/fisher test (what?)
+# This model doesn't have RSS but rather Residual Deviance RD
+anova(m0, m1, test="Chisq")
+#We reject the H0, therefore the models are not equivalent and therefore its worthy to add TimeDay
+
+# 2. Summary Z tests for addressing variable importance in the model (Is standard)
+summary(m1)
+# We see that TimeDay=Night we reject that that parameter alpha = 0, therefore is relevant
+```
+
+
+### 5. Interpret the effect of adverse weather conditions in the additive logit model (m2) on the logit scale, in terms of the odds and the approximate effect on the probability scale.
+
+
+Now we are going to create a model that uses 2 categorical variables (TimeDay, Weather)
+
+$$ logit(\pi_{ij}) = \eta + \alpha_i + \beta_j $$
+All else being equal -----> ceteris paribus
+
+Logits -> 0.22
+odds -> exp(0.22) = 1.24 (Multiplied by 1.24)
+odds(night) for severe accidents are 24% greater than odds(day) all else being equal
+```{r}
+
+m2 <- glm(cbind(Severity.Severe, Severity.Mild) ~ Weather + TimeDay, family=binomial, data=df)
+summary(m2)
+model.matrix(m2)
+
+#Net effects test
+library(car)
+Anova(m2, test="LR")
+
+#Interpret timeday "All else being equal"
+coef(m2)[3] #Logit
+exp(coef(m2)[3]) #Odds
+prob * (1-prob) * coef(m2)[3] #probability
+
+#Interpret Weather "All else being equal"
+coef(m2)[2] #Logit scale at bad is 0.43 units less than during good (reference Weather)
+exp(coef(m2)[2]) #Odds at bad Weather are 0.65 odds at good weather (reference Weather)
+prob * (1-prob) * coef(m2)[2] # Reduction of 35% in the odds with respect to the reference
+
+```
+### 6. Examine the coefficient corresponding to the dummy variable for adverse weather conditions in the m1 model. Subsequently examine the effect of bad weather on the additive m2 model. How do you interpret the fact that the coefficient for the bad weather dummy has not changed too much after introducing ‘Time of the Day’ into the model?
+
+  
+```{r}
+
+m3 <- glm(cbind(Severity.Severe, Severity.Mild) ~ Weather * TimeDay, family=binomial, data=df)
+summary(m3)
+model.matrix(m3)
+
+predict(m2)
+predict(m2, type="response")
+
+df$m <- df$Severity.Severe + df$Severity.Mild
+df$fittm2 <- predict(m2, type="response")
+df$predpos <- df$m * df$fittm2 
+df$predneg <- df$m * (1 - df$fittm2)
+df
+```
+### 7. Statistically contrast whether the net effect of each of the factors is statistically significant. Order the net effect of the factors in importance.
+
+  
+```{r}
+#Ðeviance comparison test (NOT ANOVA!!!)
+#Anova(m3, test="LR")
+
+library(effects)
+plot(allEffects(m2))
+```
+### 8. Calculate the value of the generalized Pearson statistic for the additive logit model and contrast the goodness of the fit.
+
+  
+```{r}
+
+```
+### 9. Calculate according to m2 a point estimator of the probability of severe damage in a night accident with good weather conditions. What additional information would you need to calculate a confidence interval for this probability.
+
+  
+```{r}
+
+```
+### 10. Do you consider that there is evidence to affirm that the increase in the odds of having a severe accident when it happens at night depends on the weather conditions? Justify the answer from a contrast.
+
+  
+```{r}
+
+```
+### 11. Calculate the confusion table corresponding to the additive model and determine from it the predictive capacity of the m2 model. Compare the figure with the predictive capacity of the null model.
+
+  
+```{r}
+
+```
