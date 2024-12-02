@@ -1,0 +1,213 @@
+---
+title: "logistic_regression2"
+author: "Walter J.T.V"
+date: "2024-12-02"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Data loading 
+
+```{r}
+load("Elections_92.RData")
+
+library(MASS)
+library(car)
+library(caret)
+library(ModelMetrics)
+library(cvAUC)
+#library(DescTools)
+library(FactoMineR)
+library(AER)
+library(effects)
+library(lmtest)
+```
+
+# EDA 
+
+```{r}
+summary(elecc92)
+```
+
+# Individual data vs Grouped data
+
+$$ Model_1: \eta = \beta_0 + \beta_1 * x_{age}$$
+## Individual data
+```{r}
+# Canonical link function (default) is logit
+m1 <- glm(pres ~ age, family=binomial, data=elecc92)
+summary(m1)
+
+# logodds; every extra year in age increases by .013
+# odds: exp(0.013) -> each year odds are multiplied by 1.014 more or less
+# The increment in the odds scale is 1.35% every year
+exp(coef(m1))
+100 * (exp(coef(m1)[2]) - 1)
+
+#Approximation to a probability scale :) (0-1)
+mean(elecc92$pres) * (1 - mean(elecc92$pres)) * coef(m1)[2]
+
+#How to predict manually the linear predictor and probability of voting at a median age? 
+med_age <- median(elecc92$age)
+eta <- coef(m1)[1] + coef(m1)[2] * med_age; eta # eta is the value of the linear predictor
+pprob <- exp(eta) / (1+exp(eta)); pprob
+
+# Effect of 10 years of increase
+coef(m1)[2] * 10
+# Odds: they increase by 14.4% with respect to the median
+exp(coef(m1)[2] * 10)
+```
+
+## Grouped data
+
+$$ Model_{1a}: \eta = \beta_0 + \beta_1 * x_{age}$$
+Asimptotical properties of grouped data does not hold????
+
+Both models have different absolute deviances, (Null and model) but when compared they are relatively the same.
+
+You cannot compare deviances of 2 different models using Akaike because they use 2 different data-sets, (grouped and individual)
+
+```{r}
+head(dfage)
+m1a <- glm(cbind(ypos, yneg) ~ age, family=binomial, data=dfage)
+summary(m1a)
+coef(m1) # Estimates B0, B1 for grouped data
+
+#Differences between deviance in M0, M1, M0A, M1A
+m1$null.deviance - m1$deviance
+m1a$null.deviance - m1a$deviance
+
+#Deviance test
+Anova(m1, test="LR")
+Anova(m1a, test="LR")
+```
+
+
+# Modelling
+
+## Split 
+
+```{r}
+# work (train) and test datasets
+set.seed(1234) 
+ids_work <- sample(1:nrow(elecc92), round(0.8 * nrow(elecc92)))
+dfwork <- elecc92[ids_work, ]
+dftest <- elecc92[-ids_work, ]
+```
+
+## Numeric variables
+
+```{r}
+m2 <- glm(pres ~ age + educ, family=binomial, data=dfwork)
+summary(m2)
+Anova(m2, test="LR")
+
+residualPlots(m2)
+marginalModelPlots(m2)
+```
+
+
+```{r}
+m3 <- glm(pres ~ poly(age,2) + poly(educ, 3), family=binomial, data=dfwork)
+summary(m3)
+marginalModelPlots(m3)
+#still the model is not that good
+
+m4 <- glm(pres ~ poly(age,2) *c.edu, family=binomial, data=dfwork)
+summary(m4)
+marginalModelPlots(m4)
+
+m5 <- glm(pres ~ c.age*c.edu, family=binomial, data=dfwork)
+summary(m5)
+
+AIC(m1, m2, m3, m4, m5) # M4 is pretty god
+
+library(effects)
+plot(allEffects(m4))
+#We are using effects, therefore we have a parabola for factors
+
+```
+
+## Categorical variables
+
+```{r}
+
+summary(dfwork)
+
+m6 <- glm(pres ~ poly(age,2)*c.edu + inter + close + sat, family=binomial, data=dfwork)
+summary(m6)
+
+#They are not equivalent (2 tests for the same)
+anova(m4, m6, test="Chisq")  #Statistic = difference in deviance
+waldtest(m4, m6, test="Chisq") #Statistic = chi-squared 
+
+coef(m6) #Check sat: Yes factor if its equal to 0 or more than 1
+linearHypothesis(m6, c("satSat-Yes=0", "closeClose-Yes=0"))
+
+
+m6aux <- glm(pres ~ poly(age,2) * c.edu + inter, family=binomial, data=dfwork)
+anova(m6aux, m6, test="Chisq")
+
+#Weak version net effects
+Anova(m6, test="LR")
+```
+
+## Party variable 
+
+```{r}
+
+summary(dfwork)
+dfwork$party <- paste(dfwork$p, dfwork$arty)
+head(dfwork)
+
+
+m7 <- glm(pres ~ poly(age,2)*c.edu + inter + close + sat + party, family=binomial, data=dfwork)
+summary(m7)
+Anova(m6, test="LR")
+
+dfwork$newparty <- dfwork$party 
+levels(dfwork$party)
+levels(dfwork$newparty) <- c("weak", "ind", "weak", "strong", "strong", "weak", "weak")
+
+m8 <- glm(pres ~ poly(age,2)*c.edu + inter + close + sat + newparty, family=binomial, data=dfwork)
+summary(m8)
+
+#The models are nested therefore im allowed to use a deviance test anova
+anova(m8, m7, test="Chisq")
+waldtest(m8, m7, test="Chisq") #This is not going to work given the definition of my criteria (Wald test does not know that this models are in fact nested)
+```
+
+## Interactions
+
+```{r}
+#DO NOT DO THIS IN ASSIGNMENT 2!
+m9 <- glm(pres ~ poly(age,2)*c.edu + poly(age,2) * (inter+close+sat+newparty)^2, family=binomial, data=dfwork)
+m10 <- step(m9)
+m11 <- step(m9, k=log(nrow(dfwork)))
+
+summary(m10)
+summary(m11)
+anova(m10, m11, test="Chisq") # Both models are borderline equivalent...
+```
+
+# Model Validation and Diagnostics
+
+```{r}
+#Change for m11
+#Ðo not use for GLMs 
+plot(m7)
+
+# Use for glms 
+residualPlots(m7)
+influencePlot(m7, id.n=5)
+
+# 913, 951 can be considered influent data (However, this doesn't equal to being outlier or noise... no need to remove values with large hat values)
+Boxplot(cooks.distance(m7), id=list(labels=rownames(dfwork)))
+
+ids_rem <- which(rownames(dfwork) %in% c("913", "951")); ids_rem
+
+#If we recalculate the ids_rem we get 2127
+dfwork <- dfwork[-ids_rem, ]
+
+```
