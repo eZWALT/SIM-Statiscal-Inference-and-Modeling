@@ -1,0 +1,174 @@
+---
+title: "polytomous_modeling"
+author: "Walter J.T.V"
+date: "2024-12-09"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Polytomous modeling (Softmax / Multinomial)
+
+There are 3 kinds of polytomous models: 
+
+1. Nominal:
+2. Ordinal:
+3. Hierarchical: 
+
+## Data ingestion 
+
+```{r}
+library(car)
+library(effects)
+library(scales)
+library(MNLpred)
+library(MASS) # Ordinal models
+library(nnet) # Nominal models
+library(ggplot2)
+
+load("Fesal1985.RData")
+summary(fesal85)
+df <- fesal85
+```
+
+Nominal: 3 levels (1 -> None, 2 -> Other, 3 -> Ster)
+
+The weights are = positive outcome
+
+j = 1/7 explain variable
+(1+6) variables (7)
+$$ log(\frac{\pi_{other}}{\pi_{none}}) = \eta_{other} + \alpha^{other}_j$$
+(1+6) variables (7)
+$$ log(\frac{\pi_{ster}}{\pi_{none}}) = \eta_{ster} + \alpha^{ster}_j$$
+The model has 14 variables in total
+The deviance of this model will be: 
+
+$$ D(y, \hat{\mu}) = 2* \Sigma \Sigma (   o_{ij} * log(\frac{o_{ij}}{lol?})) = 6267$$
+
+## Model exploration
+
+### Null model
+
+```{r}
+
+nm0 <- multinom(c.use ~ 1, weights=y, data=df)
+summary(nm0) # 6270 deviance, computed for all 3 categories (Formula in the slides)
+```
+
+### Model 1 (Categorical grouped age)
+```{r}
+
+?multinom
+mm1 <- multinom(c.use ~ g.age, data=df, weights = y)
+summary(mm1)
+
+anova(nm0, mm1, test="Chisq")
+```
+
+This model has smaller deviance, in fact could be compared by means of inferential testing (Chi-squared distributed test anova test)
+
+$$ \Delta D = 6271 - 5746 = 521...$$
+$$ pvalue = P(\chi^2_{12} > 525) << 0.05 \implies Reject$$
+
+### Model 2 (Numeric variable age)
+```{r}
+
+#We don't get inferential tests of \beta = 0, however we can anova test the shit out of them
+mm2 <- multinom(c.use ~ n.age, weights=y, data=df)
+mm3 <- multinom(c.use ~ poly(n.age,2), weights=y, data=df)
+#These weights are in orthogonal weird ass scale, it is not log odds
+mm4 <- multinom(c.use ~ poly(n.age,3) , weights=y, data=df)
+summary(mm4)
+
+anova(mm3, mm4, test="Chisq") # We reject that both models are equivalent
+
+#This way we transform it to log odds scale
+mm4m <-  multinom(c.use ~ I(n.age^2) + I(n.age^3) , weights=y, data=df)
+```
+
+$$ log\frac{\pi_{other}}{\pi_{none}} = -3.25 + 0.125n.age + 0.00012n.age^2 - 0.000056n.age^3 $$
+
+### Predictions
+
+We want to forecast at age 22 the probability distribution in the 3 plausible classes: We get a 64% None, 23% Other, 12% Ster.
+```{r}
+
+predict(mm4, newdata=data.frame(n.age=22), type="probs")
+
+mm4_aux <- multinom(c.use ~ I(n.age-22) + I((n.age-22)^2) + I((n.age-22)^3), weights=y, data=df)
+#Center the values at 22 ;) (It's our target prediction value, its just a trick to avoid computation with a fucking calculator)
+summary(mm4_aux)
+```
+
+
+The trick :
+$$ log\frac{\pi_{other}}{\pi_{none}} = -1.03 + 0.049 (22-22) - 0.0035(22-22)^2 -0.00005 (22-22)^3 $$
+
+Now we can get the normal odds applying a simple transformation
+
+$$ log\frac{\pi_{other}}{\pi_{none}} = -1.03... \implies \frac{\pi_{other}}{\pi_{none}} = e^{-1.03...} = 0.355$$
+$$ log\frac{\pi_{ster}}{\pi_{none}} = -1.65... \implies \frac{\pi_{ster}}{\pi_{none}} = e^{-1.65...} = 0.192$$
+$$\pi_{none} + \pi_{other} + \pi_{ster} = 1  \implies \pi_{none} = \frac{1}{1 + \frac{\pi_{other}}{\pi_{none}} + \frac{\pi_{ster}}{\pi_{none}} } = \frac{1}{1 + 0.355 + 0.192} $$
+
+```{r}
+
+first_odds <- exp(coef(mm4_aux)[1,1]) # First example look above dumbass
+sec_odds <- exp(coef(mm4_aux)[2,1]) #Second example
+
+prob_none <- 1/(1+first_odds + sec_odds); prob_none
+prob_other <- prob_none * first_odds; prob_other
+prob_ster <- prob_none * sec_odds; prob_ster
+```
+
+GLM Polytomous is kind of smelly due to the lack of residual analysis integrated in R, therefore we have to compute things manually
+
+## Model comparison
+
+Which model is better of the 2, that with numerical age or categorical grouped age:
+
+```{r}
+AIC(nm0, mm1, mm2, mm3, mm4)
+
+#this is what the model effects are, not what the data does... Data distribution of each should be checked
+plot(Effect(focal.predictors=c("n.age"), mm4 ), rug=FALSE, layout=c(3,1))
+```
+
+
+## Ordinal modeling
+
+None < Other < Ster 
+
+$$ \gamma_{none} = \pi_{none}; \gamma_{other} = \pi_{none} + \pi_{other}; \gamma_{star} = 1$$
+
+## Hierarchical modeling 
+
+This must be done by hierarchical levels (1,2,3...). Following up the hierarchical logit models:
+
+Given that this is a hierarchy the probabilities are conditioned by the upper hierarchical levels, just like in probability trees in basic probability.
+
+```{r}
+
+#LEVEL 1
+df$bc.use <- factor(ifelse(df$c.use=="None",0,1), labels=c("None", "Some"))
+summary(df)
+h1b3 <- glm(bc.use ~ poly(n.age, 3), family=binomial(), data=df) #Third order polynomial is not significant
+summary(h1b3)
+
+#Center the model to n.age=22
+h1b2 <- glm(bc.use ~ I(n.age-22) + I((n.age-22)^2), family=binomial(), weights=y, data=df) #Third order polynomial is not significant
+summary(h1b2)
+
+#LEVEL 2
+h2b3 <- glm(c.use ~  I(n.age-22) + I((n.age-22)^2) + I((n.age-22)^3),family=binomial(), weights=y, data=df[df$bc.use=="Some", ])
+plot(allEffects(h2b3))
+summary(h2b3)
+
+prob_sterCONDITIONALTOsome <- predict(h1b3, newdata=data.frame(n.age=22), type="response") #Probability "Some" at n.age 22
+prob_otherCONDITIONALTOsome <- 1 - predict(h2b3, newdata=data.frame(n.age=22), type="response") #Probabilty of "Other" at n.age 22
+```
+
+$$ \pi_{ster | some} = 0.35$$
+$$ \pi_{other | some} = 0.65$$
+
+$$ \pi_{other} = \pi_{some} * \pi_{other | some} $$
+
