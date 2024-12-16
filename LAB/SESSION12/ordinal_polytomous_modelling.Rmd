@@ -1,0 +1,177 @@
+---
+title: "ordinal_polytomous_models"
+author: "Walter J.T.V"
+date: "2024-12-16"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Ordinal modelling
+
+In this lab 12 we are going to use polytomous ordinal models to predict
+
+```{r}
+library(MASS)
+library(car)
+library(effects)
+rm(list=ls())
+load("Fesal1985.RData")
+summary(fesal85)
+df <- fesal85
+```
+
+
+## Nominal Model
+
+This model has 3 groups, therefore 2 equations:
+
+$$ log\frac{\pi_{other}}{\pi_{none}} = \eta_1$$
+
+$$ log\frac{\pi_{ster}}{\pi_{none}} = \eta_1$$
+
+
+```{r}
+#Final model of past lab 11
+mm4a <- multinom(c.use ~ I(n.age - 22) + I((n.age-22)^2) + I((n.age-22)^3), weights=y, data=fesal85)
+summary(mm4a)
+stepAIC(mm4a)
+```
+
+## Hierarchical Logit Model
+
+This model with 3 values has 2 hierarchical levels, therefore 2 equations:
+      
+          H1         H2
+root ----> None 
+     |---> Some ----> Other 
+                |---> Ster
+
+```{r}
+fesal85$bc.use <- factor(ifelse(fesal85$c.use=="None",0,1), labels=c("None", "Some"))
+table(fesal85$bc.use)
+h1 <- glm(bc.use ~ I(n.age - 22) + I((n.age-22)^2), family=binomial, data=fesal85, weight=y)
+summary(h1)
+h2 <- glm(c.use ~ I(n.age-22) + I((n.age - 22)^2) + I((n.age - 22)^3), family=binomial, data=fesal85[fesal85$bc.use == "Some", ], weight=y)
+summary(h2)
+AIC(h1) + AIC(h2) > AIC(mm4a)
+```
+
+## Ordinal Model (Today is the day!)
+
+### Simple model logit
+This model will produce 2 equations also with a latent scale. Ordinal models have cumulative probabilities, so summing up all probablities must sum up to 1.
+
+$$ \gamma_{none} = \pi_{none} |||  \gamma_{other} = \pi_{none} + \pi_{other} ||| \gamma_{ster}  = \pi_{none} + \pi_{other} + \pi_{ster} = 1$$
+$$ logit(\gamma_{j}) = \{\eta_{none}, \eta_{other}\}$$
+```{r}
+
+table(fesal85$c.use, useNA="always")
+ord0 <- polr(c.use ~ 1, weights=y, data=fesal85)
+summary(ord0)
+
+ord0$zeta
+```
+
+In this case, the logit values of the intercepts are (This is a simple model with just intercepts):
+
+$$ logit(\gamma_{none}) = 0.112 ||| logit(\gamma_{other}) = 0.7651$$
+Therefore the raw probablities is just the sigmoid function of the logit(gamma):
+
+$$\gamma_{none} = \frac{e^{0.112}}{1 + e^{0.112}} = 0.1119... ||| \gamma_{other} = \frac{e^{0.7651}}{1 + e^{0.7561}} = 0.76512...$$
+
+### Simple model probit
+
+Now lets play with probit link function, that uses the normal distribution:
+
+$$ F^{-1}_z() = qnorm \implies F_z = pnorm$$
+
+$$ probit(\gamma_j) = \eta_j \implies \gamma_j = F_z(\eta_j)$$
+```{r}
+
+ord0p <- polr(c.use ~ 1, weights=y, data=fesal85, method="probit")
+summary(ord0p)
+probit_vals <- ord0p$zeta
+
+probability_distrib <- pnorm(probit_vals)
+
+diff(c(0, pnorm(ord0p$zeta), 1))
+```
+
+### Ordinal model using explanatory variables
+
+```{r}
+#logit to the cumulative probability 
+ord1f <- polr(c.use ~ g.age, weights=y, data=fesal85)
+summary(ord1f)
+
+ord1 <- polr(c.use ~ n.age, weights=y, data=fesal85)
+summary(ord1)
+
+#We cannot use deviance inferential tests given that the 2 models aren't nested 
+#However this motherfucker will tank the shit out of the input and won't complain so be careful lil bro
+anova(ord1f, ord1, test="Chisq") #NOT CORRECT!!!!
+#However we can use Akaike or Bayesian information criteria (AIC/BIC) to decide which of the 2 models is likely to be better
+AIC(ord1, ord1f)
+
+
+#We can take a look at the t-values given that the polynomials are orthogonal
+ord3 <- polr(c.use ~ poly(n.age, 3), weights=y, data=fesal85)
+summary(ord3)
+
+ord2 <- polr(c.use ~ poly(n.age, 2), weights=y, data=fesal85)
+summary(ord2)
+
+#Big p-value, we cannot reject that the models are equivalent, therefore third order isn't needed
+anova(ord2, ord3, test="Chisq")
+
+#For better interpretability/explainability use I instead of Poly
+ord2 <- polr(c.use ~ I(n.age) + I((n.age)^2), weights=y, data=fesal85)
+summary(ord2)
+
+#This are the predicted values, but in logit scale
+etaNone <- 7.567 - 0.451065 * 22 + 0.006565 * (22^2)
+etaOther <- 8.27 - 0.451065 * 22 + 0.006565 * (22^2)
+
+#Now lets get the gamma probabilities (cumulative!!!) using the sigmoid function (0,1)
+gamNone <- exp(etaNone) / (1 + exp(etaNone)); gamNone
+gamOther <- exp(etaOther) / (1 + exp(etaOther)); gamOther
+
+#Now lets get the raw probabilities (no cumulative)
+piNone <- gamNone; piNone
+piOther <- gamOther - piNone; piOther
+
+
+#Verify that predictions match our hand-made calculations with R
+predict(ord2, newdata=data.frame(n.age=22), type="probs")
+```
+Signs must be reversed (Latent values are the inverse sign of the coefficient)
+
+The 2 model equations are the following: $$logit(\gamma_j) = \{7.57, 8.27\} - 0.461\cdot n.age + 0.0065\cdot n.age^2$$
+
+If we want to predict the values when n.age = 22 we can either use **el truquito** or just replace the values in the predictor variables (X):  (LOGIT SCALE!)
+
+$$logit(\gamma_{none}) = 7.57 - 0.461\cdot 22 + 0.0065\cdot 22^2 = \eta_{none} = $$
+$$logit(\gamma_{otther}) = 8.27 - 0.461\cdot 22 + 0.0065\cdot 22^2 = \eta_{other} = $$
+
+Then its clear that what changes between these models is intercept, because in this case we share coefficients.
+
+### Model comparison (Ordinal vs Nominal vs Hierarchical)
+
+```{r}
+#Hierachical AIC
+AIC(h1) + AIC(h2)
+
+#Nominal best model AIC <--- This is the best based on Akaike information Criteria
+AIC(mm4a)
+
+#Ordinal best model AIC
+AIC(ord1f)
+
+#This is what the model does, but not what the data does
+plot(Effect(focal.predictors = c("n.age"), mm4a), rug=F, layout=c(3,1))
+#This cannot be done for hierarchical models...
+# ordinal model
+plot(Effect(focal.predictors = c("g.age"), ord1f), rug=F, layout=c(3,1))
+
+```

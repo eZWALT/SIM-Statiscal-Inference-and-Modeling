@@ -1,0 +1,243 @@
+---
+title: "Topic5-6 SIM Group 11 16Des2024"
+author: "Lídia"
+date: "2024-12-16"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Polytomous Outcome
+```{r}
+rm(list=ls())
+load("Fesal1985.RData")
+summary(fesal85)
+head(fesal85)
+```
+
+## Multinomial Nominal treatment
+
+```{r}
+# Final model on 9 Des 2024
+library(nnet)
+mm4a <- multinom( c.use ~ I(n.age-22) +I((n.age-22)^2)+ I((n.age-22)^3), weights=y, data = fesal85)
+summary(mm4a)
+stepAIC( mm4a )
+library(car)
+Anova(mm4a)
+```
+
+## Hierarchical logit
+
+```{r}
+fesal85$bc.use <- factor(ifelse(fesal85$c.use=="None",0,1),labels=c("None","Some") )
+table(fesal85$bc.use)
+h1 <- glm( bc.use ~ I(n.age-22) +I((n.age-22)^2), family=binomial, data=fesal85 , weight = y )
+
+h2 <- glm( c.use ~ I(n.age-22) +I((n.age-22)^2) +I((n.age-22)^3), family=binomial, data=fesal85[fesal85$bc.use=="Some",], weight = y )
+
+AIC(h1)+AIC(h2)
+AIC(mm4a)
+```
+
+
+# Ordinal outcome ( today is the day!)
+
+```{r}
+# None < Other < Ster
+table(fesal85$c.use, useNA="always")
+library(MASS)
+om0 <- polr( c.use ~ 1, weights=y, data=fesal85 )
+summary( om0 )
+om0$zeta
+exp(om0$zeta)/(1+exp(om0$zeta))
+diff(c(0,exp(om0$zeta)/(1+exp(om0$zeta)),1))
+
+predict( om0, type="probs")
+
+# Probit
+om0p <- polr( c.use ~ 1, weights=y, data=fesal85, method="probit" )
+summary( om0p )
+om0p$zeta
+pnorm(om0p$zeta)
+diff(c(0,pnorm(om0p$zeta),1))
+```
+
+# Ordinal using explanatory variables
+
+```{r}
+# logit to the cumulative probability
+om1f <- polr( c.use ~ g.age, weights=y, data=fesal85)
+summary(om1f)
+om1 <- polr( c.use ~ n.age, weights=y, data=fesal85)
+summary(om1)
+
+anova(om1f,om1, test="Chisq") # NOT CORRECT!!!
+AIC(om1, om1f)
+
+om3 <- polr( c.use ~ poly(n.age,3), weights=y, data=fesal85)
+summary(om3)
+
+om2 <- polr( c.use ~ poly(n.age,2), weights=y, data=fesal85)
+summary(om2)
+
+anova(om2, om3, test="Chisq")
+
+om2 <- polr( c.use ~ I((n.age)) + I((n.age)^2), weights=y, data=fesal85)
+summary(om2)
+
+etaNone <- 7.567 - 0.461065*22+0.006565*(22^2)
+etaOther <- 8.272 - 0.461065*22+0.006565*(22^2)
+gamNone <- exp(etaNone)/(1+exp(etaNone));gamNone
+gamOther <- exp(etaOther)/(1+exp(etaOther)); gamOther
+piNone <- gamNone
+piOther<- gamOther - gamNone
+piSter <- 1-gamOther
+piNone; piOther; piSter
+
+predict(om2, newdata=data.frame(n.age=22), type="probs")
+
+AIC( om0, om0p, om1, om1f, om2)
+```
+
+Best choice Nominal, Hierarchical and Ordinal
+
+```{r}
+AIC(h1)+AIC(h2)
+AIC(mm4a)
+AIC(om1f)
+
+library(effects)
+plot(Effect(focal.predictors = c("n.age"), mm4a), rug = FALSE, layout=c(3,1))
+plot(Effect(focal.predictors = c("g.age"), om1f), rug = FALSE, layout=c(3,1))
+```
+
+
+# Case 4: Car Insurance data
+
+```{r}
+library(MASS)
+data(Insurance)
+summary(Insurance)
+head(Insurance)
+df<-data.frame(Insurance,logsize=log(Insurance$Holders) )
+# Explanatory factors: District - Group - Age
+# Poisson : Number of claims per Holder (total claims per group is available only)
+
+options(contrasts=c("contr.treatment","contr.treatment"))
+
+ma<-glm(Claims~offset(logsize)+District+Group+Age, family=poisson,data=df)
+summary(ma)
+# Efectes Net
+library(car)
+Anova(ma)
+
+# GoF: H0 Model is consistent to data  H0  can not be Rejected (Accepted)
+# Residual Deviance test statistic
+1-pchisq(ma$deviance,ma$df.residual)
+# Pearson 
+X2P<-sum(resid(ma,type="pearson")^2);X2P
+1-pchisq(X2P,ma$df.residual)  
+
+# Check for second order interaction need
+
+mai1<-glm(Claims~offset(logsize)+District*Group+Age, family=poisson,data=df)
+mai2<-glm(Claims~offset(logsize)+District+Group*Age, family=poisson,data=df)
+mai3<-glm(Claims~offset(logsize)+District*Age+Group, family=poisson,data=df)
+
+Anova(mai1)
+Anova(mai2)
+Anova(mai3)
+
+# No need
+```
+Poisson consistent?
+```{r}
+X2P<-sum(resid(ma,type="pearson")^2);X2P
+phi<-X2P/ma$df.residual
+phi
+
+library(AER)
+dispersiontest(ma,trafo=2)  # NB2 - V(mu)=mu+alpha*mu^2 -> Y Bin Neg  No Need
+
+# No overdispersion. 
+library(MASS)
+# Estimació theta glm.nb()
+mae<-glm.nb(Claims~offset(logsize)+District+Group+Age,data=df)  
+# theta 449934  tends infinit -> consistent to Poisson modelling
+summary(mae)
+
+# Amb theta per bn -> puc usar mètode genèric glm()
+mabn0<-glm(Claims~offset(logsize),family=neg.bin(449934),data=df)  
+mabn<-glm(Claims~offset(logsize)+District+Group+Age,family=neg.bin(449934),data=df)  
+
+summary(mabn)
+anova(mabn0,mabn,test="F")
+Anova(mabn, test="F")
+
+(mabn$null.deviance-mabn$deviance)/0.9004763
+(ma$null.deviance-ma$deviance)/phi
+
+plot(Effect(focal.predictors = c("Group","Age"), mabn), rug = FALSE)
+```
+
+## Gamma model
+
+```{r}
+baxter.gma0 <- glm(I(Claims+0.5)~offset(logsize), family=Gamma(link=log),data=df)
+baxter.gma <- glm(I(Claims+0.5)~offset(logsize)+District+Age+Group, family=Gamma(link=log),data=df)
+summary(baxter.gma)
+1/0.06154746
+Anova(baxter.gma,test="F")
+AIC(baxter.gma)
+anova(baxter.gma0,baxter.gma,test="F")
+(6.8378/9)/0.06154746
+
+# Comparison to Poisson and Neg. Binomial models: it looks worse
+(baxter.gma$null.deviance-baxter.gma$deviance)/0.06154746
+
+gs<-gamma.shape(baxter.gma, it.lim = 20,verbose = TRUE);gs;1/gs$alpha
+gd<-gamma.dispersion(baxter.gma);gd
+sample<-rgamma(5000,shape=gs$alpha, scale=gd)
+hist(sample,freq=F)
+curve(dgamma(x,shape=gs$alpha, scale=gd),col="red",add=T)
+```
+
+## Log-linear model
+
+```{r}
+baxter.lma0 <- glm(log(I(Claims+0.5))~offset(logsize), family=gaussian, data=df)
+baxter.lma <- glm(log(I(Claims+0.5))~offset(logsize)+District+Age+Group, family=gaussian, data=df)
+summary(baxter.lma)
+Anova(baxter.lma,test="F")
+AIC(baxter.lma)
+anova(baxter.lma0,baxter.lma,test="F")
+5.6675/9/0.07978032
+(baxter.lma$null.deviance-baxter.lma$deviance)
+
+# Common diagnostics can be used using lm() method
+baxter.llma <- lm(log(I(Claims+0.5))~offset(logsize)+District+Age+Group, data=df)
+summary(baxter.llma)
+AIC(baxter.llma)
+sqrt(0.07978032)
+par(mfrow=c(2,2))
+plot(baxter.llma)
+par(mfrow=c(1,1))
+```
+
+## Point 11
+
+Predict on the reference category for all factors
+
+```{r}
+coef(ma)
+exp(-1.82174)
+197*exp(-1.82174)
+predict(ma,newdata=data.frame(logsize=log(1),District="1",Age="<25",Group="<1l"),se.fit=T)
+exp(predict(ma,newdata=data.frame(logsize=log(1),District="1",Age="<25",Group="<1l")))
+predict(ma,type="response",newdata=data.frame(logsize=log(1),District="1",Age="<25",Group="<1l"),se.fit=T)
+predict(ma,type="response",newdata=data.frame(logsize=log(197),District="1",Age="<25",Group="<1l"),se.fit=T)
+```
+
+
+
