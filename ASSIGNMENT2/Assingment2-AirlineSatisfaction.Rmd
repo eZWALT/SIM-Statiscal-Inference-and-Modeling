@@ -24,14 +24,28 @@ Extenso relato N.1
 
 # Libraries, cleanup and global variables
 library(car)
+library(AER)
+library(MASS)
+library(caret)
 library(moments)
 library(FactoMineR)
 library(factoextra)
 library(corrplot)
+library(missMDA)
+library(ModelMetrics)
+library(cvAUC)
+library(effects)
+library(lmtest)
+
 rm(list=ls())
 
 train <- read.csv("train_data.csv")
+train$X <- NULL
+train$id <- NULL
+
 test <- read.csv("test_data.csv")
+test$X <- NULL
+test$id <- NULL
 ```
 
 
@@ -448,12 +462,13 @@ test$satisfaction <- as.factor(test$satisfaction)
 TODO: mirar si aixo ens importa o no realment, per modelling pot ser interesant.
 
 ```{r}
-summary(train)
 ```
 
 ## 2.3 Data quality report 
 
 This section provides a comprehensive overview of the dataset's quality, complementing the prior identification of univariate outliers and missing values with a visual summary to highlight key patterns and anomalies. The data quality report is structured into two parts: an analysis regarding the variables and a review of individual records (stating the number of outliers per individual and identifying multivariate outliers).
+
+TODO: falta tot lol :)
 
 ### 2.3.1 Variables
 
@@ -501,6 +516,8 @@ Here we make variables for multivariate outliers and stuff ....
 ```
 
 ## 2.4 Imputation 
+
+TODO: Revisar aixo s'ha quedat a mitges pero diria que ja esta tot
 
 In this section, all the missing values previously identified are addressed through an imputation process. To avoid repetitive code, a function is first defined to perform the imputation consistently across variables. The imputation is then carried out for each variable with missing values, and a brief commentary is provided for each to discuss the imputation approach and its impact on the data.
 
@@ -554,16 +571,24 @@ test[imp.res$na_indexs,"Arrival.Delay.in.Minutes"] = imp.res$imp_values
 ```
 ### 2.5 Profiling analysis
 
-The target binary variable **satisfaction** splits the data unevenly: 57.14% neutral or dissastified vs 42.86% satisfied. Moreover this variable contains no null values at all. To delve deeper into the main differences between these 2 groups, a clustering profiling will be performed.
+The target binary variable **satisfaction** splits the data unevenly: 57.14% neutral or dissastified vs 42.86% satisfied. Moreover this variable contains no null values at all. To delve deeper into the main differences between these 2 groups, a clustering profiling will be performed. Just as a remainder, the dataset contains 18 categorical variables (14 ordinal, 3 binary, 1 ternary) and 4 numerical, besides the target variable.
 
+Firstly, the **test.chi2** output points out the fact that almost all categorical variables are statistically significantly related to satisfaction, except for **Gender**. The statistical significance of the performed $$\chi^2$$ tests is huge for all variables except for **Departure.Arrival.time.convenient**, which has the lowest p-value of them all, $$1.53 \cdot 10^{-2}$$.
 
+Secondly, the **quanti.var** output points out that all the numerical variables of the dataset (Flight.Distance, Age, Arrival.Delay.in.Minutes and Departure.Delay.in.Minutes) are statistically significant after performing Anova/T-test, being Flight.Distance and Age the most significant variables.
+
+Finally, taking a glance over **quanti** output we can gather numerical insights on the main difference between the 2 groups after performing numerous v-tests:
+- Those belonging to the "satisfied" group present a slightly above age, below average delays in departure and arrival and a significantly bigger Flight.Distance, compared to the overall averages.
+- Those belonging to the "neutral or dissatisfied" in contrast have a below average age of 37 and slightly above average delays in both departure and arrival but significantly below average Flight.Distance, compared to the overall averages.
+
+summary(train)
 ```{r}
-res_cat <- catdes(train, proba=0.05, num.var=25)
+res_cat <- catdes(train, proba=0.05, num.var=23)
 
 #Find categorical varibales that are significantly related to satisfaction ---> Chi^2 test
 res_cat$test.chi2
 
-#Find numerical variables that are significantly related to satisfaction ---> Anova test
+#Find numerical variables that are significantly related to satisfaction ---> Anova/T test
 res_cat$quanti.var
 
 #Compare the 2 clusters asessing numerical differences ---> v test
@@ -574,15 +599,23 @@ res_cat$quanti
 
 # 3. Modeling 
 
+TODO: Falta tot el modeling :)
+
 ## 3.1 Model Discovery and Feature Selection
 
 ```{r}
-
+summary(train)
+# All variables
+m1 <- glm(satisfaction ~ Age + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes , family=binomial, data=train)
+summary(m1)
 ```
 
 ## 3.2 Effects study
 
 ```{r}
+plot(allEffects(m1))
+
+
 
 ```
 
@@ -608,6 +641,9 @@ Goodness of fit a la lidia li encanta aquesta paraula!!!!!
 
 
 ## 4 Conclusion and Further Work
+
+TODO: Falten totes les conclusions :)
+
 
 **Extensissimo prolongado relato**
 
