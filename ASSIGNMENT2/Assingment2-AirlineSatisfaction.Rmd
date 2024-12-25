@@ -26,6 +26,7 @@ Extenso relato N.1
 library(car)
 library(AER)
 library(MASS)
+library(mice)
 library(caret)
 library(moments)
 library(FactoMineR)
@@ -36,6 +37,9 @@ library(ModelMetrics)
 library(cvAUC)
 library(effects)
 library(lmtest)
+library(pscl)
+library(pROC)
+
 
 rm(list=ls())
 
@@ -46,6 +50,11 @@ train$id <- NULL
 test <- read.csv("test_data.csv")
 test$X <- NULL
 test$id <- NULL
+
+#Global variables 
+num_vars <- c("Age", "Flight.Distance", "Departure.Delay.in.Minutes", "Arrival.Delay.in.Minutes")
+#Including satisfaction target
+categ_vars <- c("Gender", "Customer.Type", "Type.of.Travel", "Class", "Inflight.wifi.service", "Departure.Arrival.time.convenient", "Ease.of.Online.booking", "Gate.location", "Food.and.drink", "Online.boarding", "Seat.comfort", "Inflight.entertainment", "On.board.service", "Leg.room.service", "Baggage.handling", "Checkin.service", "Inflight.service", "Cleanliness", "satisfaction")
 ```
 
 
@@ -134,6 +143,93 @@ summarize_ordinal_data <- function(data) {
   print(sd(data))
   print("Number of nulls: ")
   print(sum(is.na(data)))
+}
+
+
+find_valid_moutlier <- function(df, quantile = 0.95) {
+  # Select numeric columns without NA
+  valid_numeric_columns <- which(sapply(df, is.numeric) 
+                                 & sapply(df, function(col) all(!is.na(col))))
+  
+  # Track total number of variables
+  num_vars <- length(valid_numeric_columns)
+  cat("Total numeric variables without NAs:", num_vars, "\n")
+  
+  # Start testing combinations from the largest size down to 1
+  for (k in num_vars:1) {
+    cat("Testing combinations of size", k, "\n")
+    
+    # Generate all combinations of size k
+    combo_indexes <- combn(valid_numeric_columns, k, simplify = FALSE)
+    total_combos <- length(combo_indexes)
+    cat("Total combinations of size", k, ":", total_combos, "\n")
+    
+    for (i in seq_along(combo_indexes)) {
+      combo <- combo_indexes[[i]]
+      combo_names <- names(df)[combo]
+      
+      # Attempt Moutlier function
+      result <- try({
+        res_mout <- Moutlier(df[, combo], quantile = quantile)
+        
+        # If successful, return the result immediately
+        cat("Valid combination found! Indexes:",
+            paste(combo, collapse = ", "), "\n")
+        cat("Variable names:", paste(combo_names, collapse = ", "), "\n")
+        
+        multoutliers <- which((res_mout$md > res_mout$cutoff)
+                              & (res_mout$rd > res_mout$cutoff))
+        cat("Number of multivariate outliers:", length(multoutliers), "\n")
+        
+        return(list(res_mout = res_mout, variables = combo_names,
+                    multoutliers = multoutliers))
+      }, silent = TRUE)
+      
+      # Check for errors and move to the next combination
+      if (inherits(result, "try-error")) {
+        cat("Combination failed.\n")
+      } else {
+        return(result)  # Stop at the first valid combination
+      }
+    }
+  }
+  
+  # If no valid combination is found
+  cat("No valid combination found.\n")
+  return(NULL)
+}
+
+imputation_function <- function(variable, dataset) {
+  
+  # Extract numeric variables and identify missing indices
+  num_vars <- dataset[sapply(dataset, is.numeric)]
+  miss_ids <- which(is.na(dataset[[variable]]))
+  
+  # Perform PCA-based imputation
+  imp_values <- imputePCA(num_vars)$completeObs[, variable]
+  
+  # Plot quantile comparison
+  plot_quantiles_comparison(dataset[[variable]], imp_values, variable)
+  
+  return(list(
+    na_indices = miss_ids,
+    imp_values = imp_values[miss_ids]
+  ))
+}
+
+plot_quantiles_comparison <- function(original, imputed, variable) {
+  
+  # Compute quantiles for original and imputed values
+  quantiles_original <- quantile(original, probs = seq(0, 1, 0.1), na.rm = TRUE)
+  quantiles_imputed <- quantile(imputed, probs = seq(0, 1, 0.1), na.rm = FALSE)
+  
+  # Plot quantile comparison
+  plot(seq(0, 1, 0.1), quantiles_original, type = "l", col = "blue", lwd = 2,
+       xlab = "Quantile", ylab = "Value",
+       main = paste("Quantile Comparison for", variable))
+  lines(seq(0, 1, 0.1), quantiles_imputed, col = "red", lwd = 2)
+  legend("topright", legend = c("Original", "Imputed"),
+         col = c("blue", "red"), lwd = 2)
 }
 ```
 
@@ -450,9 +546,9 @@ summary_and_normality_check(train$Arrival.Delay.in.Minutes)
 **satisfaction** is a target binary categorical variable that represents whether the customer is satisfied or not/neutral with its overall experience. The dataset is somewhat balanced with a slight bias towards neutral/dissatisfied (57.14% vs 42.86%). There are no null values.
 
 ```{r}
-#Transform to factor 
 summarize_ordinal_data(train$satisfaction)
 
+#Transform to factor 
 train$satisfaction <- as.factor(train$satisfaction)
 test$satisfaction <- as.factor(test$satisfaction)
 ```
@@ -468,7 +564,7 @@ TODO: mirar si aixo ens importa o no realment, per modelling pot ser interesant.
 
 This section provides a comprehensive overview of the dataset's quality, complementing the prior identification of univariate outliers and missing values with a visual summary to highlight key patterns and anomalies. The data quality report is structured into two parts: an analysis regarding the variables and a review of individual records (stating the number of outliers per individual and identifying multivariate outliers).
 
-TODO: falta tot lol :)
+TODO: falta tot lol :) ----> S'ha de tenir en compte que potser 0 en la enquesta vol dir que no s'ha puntuat (NULL VALUE), pero no hi ha cap mena de metadada al respecte en el enunciat.
 
 ### 2.3.1 Variables
 
@@ -476,15 +572,22 @@ This first part of the data quality report assesses the quality of the data rega
 
 #### 2.3.1.1 Missing values and Errors
 
+
 ```{r}
+
+md.pattern(train, rotate.names = T)
 
 ```
 
 #### 2.3.1.2 Outliers
 
+In this section a profiling of outliers will be done for the 4 numerical variables, just as a summary of the univariate data analysis performed on the past section 2.2. 
+
 ```{r}
 
+
 ```
+
 
 ### 2.3.2 Individuals
 
@@ -502,17 +605,47 @@ This first part of the data quality report assesses the quality of the data rega
 
 #### 2.3.2.3 Multivariant Outliers
 
+TODO 
+
 
 ```{r}
+result <- find_valid_moutlier(train, quantile = 0.95)
 
+res.out <- result$res_mout; 
+mult.outliers <- result$multoutliers; length(mult.outliers)
+
+# Plot Multivariate Outliers
+dev.off()
+plot(res.out$md, res.out$rd)
+abline(h=res.out$cutoff, col="red", lty=2)
+abline(v=res.out$cutoff, col="red", lty=2)
 ```
 
 ### 2.3.3 Data Quality Relationships 
 
-Here we make variables for multivariate outliers and stuff ....
+TODO 
+Finally, a multivariate outlier binary variable profiling is presented:
 
 ```{r}
+bi_mvout_df <- train
+#Binary factor if its a  multivariate outlier
+bi_mvout_df$mout <- 0 
+bi_mvout_df[mult.outliers, "mout"] <- 1
+bi_mvout_df$mout <- factor(bi_mvout_df$mout, labels=c("Not M.O", "Yes M.O"))
+table(bi_mvout_df$mout)
 
+
+#Number of univariate outlier variables for a given observation
+bi_mvout_df$n_uout <- NULL
+#Number of missing values in variables for a given observation 
+bi_mvout_df$n_miss <- rowSums(is.na(train))
+
+summary(bi_mvout_df[, c("mout", "n_uout", "n_miss")]);
+sd(bi_mvout_df$n_uout); sd(bi_mvout_df$n_miss)
+num_vars <- bi_mvout_df[sapply(bi_mvout_df, is.numeric)]
+
+#Multivariate outlier profiling
+catdes(bi_mvout_df, num.var=NULL, proba=0.05)
 ```
 
 ## 2.4 Imputation 
@@ -523,53 +656,17 @@ In this section, all the missing values previously identified are addressed thro
 
 Note that values are imputed both in the training and test sets, as stated in the statement of the project. 
 
-```{r}
-imputation_function <- function(variable, dataset) {
-  
-  # Extract numeric variables and identify missing indices
-  num_vars <- dataset[sapply(dataset, is.numeric)]
-  miss_ids <- which(is.na(dataset[[variable]]))
-  
-  # Perform PCA-based imputation
-  imp_values <- imputePCA(num_vars)$completeObs[, variable]
-  
-  # Plot quantile comparison
-  plot_quantiles_comparison(dataset[[variable]], imp_values, variable)
-  
-  return(list(
-    na_indices = miss_ids,
-    imp_values = imp_values[miss_ids]
-  ))
-}
-
-plot_quantiles_comparison <- function(original, imputed, variable) {
-  
-  # Compute quantiles for original and imputed values
-  quantiles_original <- quantile(original, probs = seq(0, 1, 0.1), na.rm = TRUE)
-  quantiles_imputed <- quantile(imputed, probs = seq(0, 1, 0.1), na.rm = FALSE)
-  
-  # Plot quantile comparison
-  plot(seq(0, 1, 0.1), quantiles_original, type = "l", col = "blue", lwd = 2,
-       xlab = "Quantile", ylab = "Value",
-       main = paste("Quantile Comparison for", variable))
-  lines(seq(0, 1, 0.1), quantiles_imputed, col = "red", lwd = 2)
-  legend("topright", legend = c("Original", "Imputed"),
-         col = c("blue", "red"), lwd = 2)
-}
-
-```
-
 ### 2.4.1 **Arrival.Delay.in.Minutes**
 
 ```{r}
 imp.res <- imputation_function("Arrival.Delay.in.Minutes", train)
-train[imp.res$na_indexs,"Arrival.Delay.in.Minutes"] = imp.res$imp_values
+train[imp.res$na_indices,"Arrival.Delay.in.Minutes"] = imp.res$imp_values
 
 imp.res <- imputation_function("Arrival.Delay.in.Minutes", test)
-test[imp.res$na_indexs,"Arrival.Delay.in.Minutes"] = imp.res$imp_values
+test[imp.res$na_indices,"Arrival.Delay.in.Minutes"] = imp.res$imp_values
 
 ```
-### 2.5 Profiling analysis
+### 2.5 Profiling analysis and correlations
 
 The target binary variable **satisfaction** splits the data unevenly: 57.14% neutral or dissastified vs 42.86% satisfied. Moreover this variable contains no null values at all. To delve deeper into the main differences between these 2 groups, a clustering profiling will be performed. Just as a remainder, the dataset contains 18 categorical variables (14 ordinal, 3 binary, 1 ternary) and 4 numerical, besides the target variable.
 
@@ -581,7 +678,6 @@ Finally, taking a glance over **quanti** output we can gather numerical insights
 - Those belonging to the "satisfied" group present a slightly above age, below average delays in departure and arrival and a significantly bigger Flight.Distance, compared to the overall averages.
 - Those belonging to the "neutral or dissatisfied" in contrast have a below average age of 37 and slightly above average delays in both departure and arrival but significantly below average Flight.Distance, compared to the overall averages.
 
-summary(train)
 ```{r}
 res_cat <- catdes(train, proba=0.05, num.var=23)
 
@@ -596,6 +692,12 @@ res_cat$quanti
 ```
 
 
+Now, Looking at the relationship between numerical variables, an obvious perfect positive correlation is divised: Departure delay and Arrival delay. Other variables have negligible relations and variables Age and Flight.distance share a small positive correlation.
+
+```{r}
+corrplot(cor(train[, num_vars]))
+```
+
 
 # 3. Modeling 
 
@@ -603,41 +705,129 @@ TODO: Falta tot el modeling :)
 
 ## 3.1 Model Discovery and Feature Selection
 
+In this section an initial assessment of plausible models for modelling satisfaction variable will be presented, keeping explainability and performance as the main focus of this discovery process. The main tools that have been used in order to find the best possible models are the following:
+
+1. Inferential tests: 
+2. Goodness of fit: 
+3. Residual analysis:
+
+Firstly, a model with only numerical variables gets a residual deviance of 6284.6 with 4995 degrees of freedom, which is a big improvement from the null model. However, here we can see that Arrival.Delay variable barely passes the 5% significance ratio with a p-value of 0.02 while Depature.Delay.in.Minutes does not pass the Wald test, we cannot reject that this parameter is equal to 0. Just to confirm that m1 is different to m0, Anova chisq-tests or wald-tests can be performed given that this 2 models are nested. This procedure will be used throughout the rest of the model discovery procedure.
+
+The second model m2 which is presented is that containing all the 4 numerical variables and 18 categorical. This model has a significant lower deviance compared to the Null model m0 (6831.2 vs 1787.2 with 72 degrees of freedom less).
+
 ```{r}
-summary(train)
-# All variables
-m1 <- glm(satisfaction ~ Age + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes , family=binomial, data=train)
+#Null model
+m0 <- glm(satisfaction ~ 1, family=binomial, data=train)
+summary(m0)
+
+#Numerical variables
+m1 <- glm(satisfaction ~ Age + Flight.Distance + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family=binomial, data=train)
 summary(m1)
+# Wald tests for all parameters = 0 (Same as summary)
+anova(m1, test="LR")
+
+# Model equivalence testing
+anova(m0, m1, test="Chisq")
+waldtest(m0, m1, test="Chisq")
+
+# All variables
+m2 <- glm(satisfaction ~ Age + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes , family=binomial, data=train)
+summary(m2)
+
+anova(m1, m2, test="Chisq")
+waldtest(m1, m2, test="Chisq")
+
+# All variables with interactions 
+m3 <- NULL
+
+```
+
+Now after some preliminary model exploration, step-wise regression will be performed in order to find the best possible model according to Akaike's criterion.
+
+```{r}
+
+mAIC <- stepAIC(m2)
+
+mAIC
 ```
 
 ## 3.2 Effects study
 
 ```{r}
-plot(allEffects(m1))
-
-
-
+plot(allEffects(m2))
 ```
 
 ## 3.3 Residual analysis and Influential data study
 
 ```{r}
+# Use for glms 
+residualPlots(m2)
+influencePlot(m2, id.n=5)
 
+# 913, 951 can be considered influent data (However, this doesn't equal to being outlier or noise... no need to remove values with large hat values)
+Boxplot(cooks.distance(m2), id=list(labels=rownames(dfwork)))
 ```
 
-## 3.4 Effects study
+## 3.4 Final model interpretation
+
+The final model that obtained after a long model discovery is the following, which has a pseudo-coefficient of determination (McFadden) of X.
+
+TODO: Explicar amb una formula de latex la interpretacio del model final amb logit i probabilitats i tal
 
 ```{r}
+best_model <- m1
+
+#Summary of the parameters
+summary(best_model)
+#Psuedo coefficient of determination R^2
+psuedoR2 <- pR2(best_model)["McFadden"]
+#Residual analysis and influent data
+residualPlots(best_model)
+
+#Evaluation of the model using train data (Confusion matrix and AUC)
+
+# Get predicted probabilities and classifications
+predicted_prob <- predict(best_model, newdata = train, type = "response") 
+#Classification threshold
+threshold <- 0.5  
+predicted_class <- ifelse(predicted_prob > threshold, 1, 0) 
+
+# Confusion Matrix
+actual_class <- train$satisfaction  
+conf_matrix <- confusionMatrix(as.factor(predicted_class), as.factor(actual_class));conf_matrix
+
+# Extract evaluation metrics
+accuracy <- conf_matrix$overall["Accuracy"]
+precision <- conf_matrix$byClass["Precision"]
+recall <- conf_matrix$byClass["Recall"]
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+cat("Accuracy:", accuracy, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall:", recall, "\n")
+cat("F1 Score:", f1_score, "\n")
+
+# AUC and ROC Curve
+roc_curve <- roc(actual_class, predicted_prob)  
+auc_value <- auc(roc_curve)  
+cat("AUC:", auc_value, "\n")
+
+# Plot the ROC Curve
+plot(roc_curve, col = "blue", main = "ROC Curve", lwd = 2)
+abline(a = 0, b = 1, lty = 2, col = "red")  # Add diagonal reference line
 
 ```
+
 
 ## 3.5 Model evaluation
 
-Goodness of fit a la lidia li encanta aquesta paraula!!!!!
+Evaluation of the aforementioned model with unseen data will be performed using various categorical data criteria such as Precision, Recall, Accuracy, F1-score and the AUC/ROC curve.
+
 
 ```{r}
 
 ```
+
 
 
 ## 4 Conclusion and Further Work
