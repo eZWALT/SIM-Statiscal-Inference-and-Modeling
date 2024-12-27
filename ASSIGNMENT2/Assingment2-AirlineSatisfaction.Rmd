@@ -55,6 +55,7 @@ test$id <- NULL
 num_vars <- c("Age", "Flight.Distance", "Departure.Delay.in.Minutes", "Arrival.Delay.in.Minutes")
 #Including satisfaction target
 categ_vars <- c("Gender", "Customer.Type", "Type.of.Travel", "Class", "Inflight.wifi.service", "Departure.Arrival.time.convenient", "Ease.of.Online.booking", "Gate.location", "Food.and.drink", "Online.boarding", "Seat.comfort", "Inflight.entertainment", "On.board.service", "Leg.room.service", "Baggage.handling", "Checkin.service", "Inflight.service", "Cleanliness", "satisfaction")
+all_outliers <- numeric(5000)
 ```
 
 
@@ -91,7 +92,6 @@ calculate_outliers <- function(data) {
     outliers_indexes = mild_outliers
   ))
 }
-
 summary_and_normality_check <- function(data, bins=20) {
   #Basic summary 
   print("Summary: ")
@@ -125,8 +125,8 @@ summary_and_normality_check <- function(data, bins=20) {
   print(ks.test(x=data, y="pnorm", mean=mean(data), sd=sd(data)))
   return(out.res$outliers_indexes)
 }
-
 summarize_ordinal_data <- function(data) {
+  data[data == 0] <- NA
   tab <- table(data)
   props <- prop.table(tab)
   print("Proportions: ")
@@ -136,15 +136,27 @@ summarize_ordinal_data <- function(data) {
   
   barplot(props, col=rainbow(n), main="Distribution of Ordinal variable", xlab="Categories", ylab="Relative Freq.")
   print("Mean: ")
-  print(mean(data))
+  print(mean(data, na.rm = TRUE))
   print("Median: ")
-  print(median(data))
+  print(median(data, na.rm = TRUE))
   print("Standard Deviation: ")
-  print(sd(data))
+  print(sd(data, na.rm = TRUE))
+  print("Number of nulls: ")
+
+  print(sum(is.na(data)))
+}
+summarize_categorical_data <- function(data) {
+  tab <- table(data)
+  props <- prop.table(tab)
+  print("Proportions: ")
+  print(props)
+  
+  n <- length(table(data))
+  
+  barplot(props, col=rainbow(n), main="Distribution of Ordinal variable", xlab="Categories", ylab="Relative Freq.")
   print("Number of nulls: ")
   print(sum(is.na(data)))
 }
-
 
 find_valid_moutlier <- function(df, quantile = 0.95) {
   # Select numeric columns without NA
@@ -246,10 +258,8 @@ Note that the explanatory data analysis is assessed using exclusively the train 
 *Gender* is a categorical binary variable that represents the gender of the passenger which is almost perfectly balanced, with a few more females than males. There are no null values.
 
 ```{r}
-summarize_ordinal_data(train$Gender)
-
-train$Gender <- as.factor(train$Gender)
-test$Gender <- as.factor(test$Gender)
+summarize_categorical_data(train$Gender)
+summarize_categorical_data(test$Gender) # 0 NAs
 ```
 
 ### 2.2.2 Variable Customer.Type
@@ -257,10 +267,8 @@ test$Gender <- as.factor(test$Gender)
 **Customer.Type** is a categorical binary variable that represents the kind of customer in terms of loyality (Loyal or disloyal) which is unbalanced (81% vs 19%). There are no null values.
 
 ```{r}
-summarize_ordinal_data(train$Customer.Type)
-
-train$Customer.Type <- as.factor(train$Customer.Type)
-test$Customer.Type <- as.factor(test$Customer.Type)
+summarize_categorical_data(train$Customer.Type)
+summarize_categorical_data(test$Customer.Type) # 0 NAs
 ```
 
 ### 2.2.3 Variable Age
@@ -269,6 +277,7 @@ test$Customer.Type <- as.factor(test$Customer.Type)
 
 ```{r}
 summary_and_normality_check(train$Age,bins=25)
+summary_and_normality_check(test$Age,bins=25) # 0 NAs
 ```
 
 ### 2.2.4 Variable Type.of.Travel
@@ -276,10 +285,8 @@ summary_and_normality_check(train$Age,bins=25)
 **Type.of.Travel** categorical binary variable that represents the kind of flight of the observation (Business or Personal). The proportions are somewhat skewed towards business travel (0.692 vs 0.308) and there are no null values.
 
 ```{r}
-summarize_ordinal_data(train$Type.of.Travel)
-
-train$Type.of.Travel <- as.factor(train$Type.of.Travel)
-test$Type.of.Travel <- as.factor(test$Type.of.Travel)
+summarize_categorical_data(train$Type.of.Travel)
+summarize_categorical_data(test$Type.of.Travel) # 0 NAs
 ```
 
 ### 2.2.5 Variable Class
@@ -287,66 +294,47 @@ test$Type.of.Travel <- as.factor(test$Type.of.Travel)
 **Class** categorical ternary variable that represents the type of cabin travel class of the observations (Business, Eco or Eco Plus). Vast majority of observations belong to Business or Eco evenly, and Eco plus has belongs to 7.22% of the observations. There are no null values.
 
 ```{r}
-summarize_ordinal_data(train$Class)
-
-train$Class <- as.factor(train$Class)
-test$Class <- as.factor(test$Class)
+summarize_categorical_data(train$Class)
+summarize_categorical_data(test$Class) # 0 NAs
 ```
 
 ### 2.2.6 Variable Flight.Distance
 
-**Flight.Distance** is a discrete finite numerical variable that represents the distance of the given flight in a range between [67, 4983] with a mean value of 1194 and 999 std. Its distribution is obviously not normal given the almost exponential shape that it has and both inferential tests reject with tiny p-values. There are 95 mild outliers and there is no metadata about the units.
+**Flight.Distance** is a discrete finite numerical variable that represents the distance of the given flight in a range between [67, 4983] with a mean value of 1194 and 999 std. Its distribution is obviously not normal given the almost exponential shape that it has and both inferential tests reject with tiny p-values. There are 95 mild outliers, none of them severe, and there is no metadata about the units. There are no null values.
 
 ```{r}
-summary_and_normality_check(train$Flight.Distance, bins=10)
+outliers_indexes = summary_and_normality_check(train$Flight.Distance, bins=10)
+all_outliers[outliers_indexes] <- all_outliers[outliers_indexes] + 1
+summary_and_normality_check(test$Flight.Distance, bins=10) # 0 NAs
 ```
 
 ### 2.2.7 Variable Inflight.wifi.service
 
-**Inflight.wifi.service** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. The majority of values are grouped between 2 and 3, with a mean of 2.7, median of 3 and deviation of 1.33, producing a unimodal bell-shaped distribution centered at 2-3. There are no null values.
+**Inflight.wifi.service** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. The majority of values are grouped between 2 and 3, with a mean of 2.7, median of 3 and deviation of 1.26, producing a unimodal bell-shaped distribution centered at 2-3. There are 149 null values.
 
 ```{r}
-summarize_ordinal_data(train$Inflight.wifi.service)
-names(train)
+summarize_ordinal_data(train$Inflight.wifi.service) # mirar pq no funciona be amb aquesta variable nomes 
 
-train$Inflight.wifi.service <- factor(train$Inflight.wifi.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-test$Inflight.wifi.service <- factor(test$Inflight.wifi.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Inflight.wifi.service) # 58 NAs
 ```
 
 ### 2.2.8 Variable Departure.Arrival.time.convenient
 
-**Departure.Arrival.time.convenient** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. The majority of values are grouped between 3 and 5, with a mean of 3, median of 3 and deviation of 1.51. The distribution is right-skewed and has a heavy left tail. There are no null values.
+**Departure.Arrival.time.convenient** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. The majority of values are grouped between 4 and 5, with a mean of 3.22, median of 3 and deviation of 1.38. The distribution is right-skewed and has a heavy left tail. There are 247 values equal to 0, we consider them as Not Applicable (NA).
 
 ```{r}
 summarize_ordinal_data(train$Departure.Arrival.time.convenient)
-
-train$Departure.Arrival.time.convenient <- factor(train$Departure.Arrival.time.convenient, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Departure.Arrival.time.convenient <- factor(test$Departure.Arrival.time.convenient, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Departure.Arrival.time.convenient) # 115 NAs
 ```
 
 ### 2.2.9 Variable Ease.of.Online.booking
 
-**Ease.of.Online.booking** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. The distribution of ratings is somewhat bell-shaped and unimodal, wtih a mean of 2.77, median 3 and deviation of 1.4. There are no null values.
+**Ease.of.Online.booking** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. The distribution of ratings is somewhat bell-shaped and unimodal, wtih a mean of 2.89, median 3 and deviation of 1.29. There are 127 null values.
 
 ```{r}
 summarize_ordinal_data(train$Ease.of.Online.booking)
+summarize_ordinal_data(test$Ease.of.Online.booking) # 85 NAs
 
-train$Ease.of.Online.booking <- factor(train$Ease.of.Online.booking, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Ease.of.Online.booking <- factor(test$Ease.of.Online.booking, 
-                                      levels = c(0, 1, 2, 3, 4, 5),
-                                      ordered = TRUE)
 ```
 
 ### 2.2.10 Variable Gate.location
@@ -355,216 +343,192 @@ test$Ease.of.Online.booking <- factor(test$Ease.of.Online.booking,
 
 ```{r}
 summarize_ordinal_data(train$Gate.location)
-
-train$Gate.location <- factor(train$Gate.location, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-test$Gate.location <- factor(test$Gate.location, 
-                             levels = c(1, 2, 3, 4, 5),
-                             ordered = TRUE)
+summarize_ordinal_data(test$Gate.location) # 0 NAs
 ```
 
 ### 2.2.11 Variable Food.and.drink
 
-**Food.and.drink** is a self-describing ordinal categorical variable given by the customers in the range [0,5].
-The distribution is uniform and right skewed, with a median of 3, mean of  3.19 and deviation of 1.35. There are no null values.
+**Food.and.drink** is a self-describing ordinal categorical variable given by the customers in the range [1,5].
+The distribution is uniform and right skewed, with a median of 3, mean of  3.19 and deviation of 1.33. There are 5 null values.
 ```{r}
 summarize_ordinal_data(train$Food.and.drink)
 
-train$Food.and.drink <- factor(train$Food.and.drink, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Food.and.drink <- factor(test$Food.and.drink, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Food.and.drink) # 1 NAs
 ```
 
 ### 2.2.12 Variable Online.boarding
 
-**Online.boarding** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. The barplot showcases a fairly unimodal right skewed distribution, with a median of 3.5, mean of 3.24 and deviation of 1.35. There are no null values.
+**Online.boarding** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. The barplot showcases a fairly unimodal right skewed distribution, with a median of 4, mean of 3.32 and deviation of 1.26. There are 119 null values.
 
 ```{r}
 summarize_ordinal_data(train$Online.boarding)
 
-train$Online.boarding <- factor(train$Online.boarding, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Online.boarding <- factor(test$Online.boarding, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Online.boarding)  # 47 NAs
 ```
 
-### 2.2.12 Variable Seat.comfort
+### 2.2.13 Variable Seat.comfort
 
 **Seat.comfort** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. Its distribution is right skewed with a heavy left tail, and has a median of 4, mean of 3.41 and a deviation of 1.33. There are no null values.
 
 ```{r}
 summarize_ordinal_data(train$Seat.comfort)
-
-train$Seat.comfort <- factor(train$Seat.comfort, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Seat.comfort <- factor(test$Seat.comfort, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Seat.comfort) # 0 NAs
 ```
 
-### 2.2.13 Variable Inflight.entertainment
+### 2.2.14 Variable Inflight.entertainment
 
-**Inflight.entertainment** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. Its distribution is unimodal and slightly right-skewed, with a median of 4, mean 3.34 and deviation of 1.33. There are no nulls
+**Inflight.entertainment** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. Its distribution is unimodal and slightly right-skewed, with a median of 4, mean 3.34 and deviation of 1.33. There is 1 null value. 
 
 ```{r}
 summarize_ordinal_data(train$Inflight.entertainment)
-
-train$Inflight.entertainment <- factor(train$Inflight.entertainment, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Inflight.entertainment <- factor(test$Inflight.entertainment, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Inflight.entertainment) # 0 NAs
 
 ```
 
-### 2.2.14 Variable On.board.service
+### 2.2.15 Variable On.board.service
 
-**On.board.service** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. Similarly, its distribution is unimodal and right skewed with a median of 4, mean of 3.37 and deviation of 1.27. There are no null values.
+**On.board.service** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. Similarly, its distribution is unimodal and right skewed with a median of 4, mean of 3.37 and deviation of 1.27. There is one null value.
 
 ```{r}
 summarize_ordinal_data(train$On.board.service)
-
-train$On.board.service <- factor(train$On.board.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$On.board.service <- factor(test$On.board.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$On.board.service) # 0 NAs
 ```
 
-### 2.2.15 Variable Leg.room.service
+### 2.2.16 Variable Leg.room.service
 
-**Leg.room.service** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. Its distribution is more uniform than previous variables but its also somewhat right skewed, with a median of 4 and mean of 3.34, deviation 1.31. There are no null values.
+**Leg.room.service** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. Its distribution is more uniform than previous variables but its also somewhat right skewed, with a median of 4 and mean of 3.35, deviation 1.30. There are 22 null values.
 
 ```{r}
 summarize_ordinal_data(train$Leg.room.service)
-
-train$Leg.room.service <- factor(train$Leg.room.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Leg.room.service <- factor(test$Leg.room.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Leg.room.service) # 8 NAs
 ```
 
-### 2.2.16 Variable Baggage.handling
+### 2.2.17 Variable Baggage.handling
 
 **Baggage.handling** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. Its distribution is unimodal and highly right-skewed, having a median of 4, mean of 3.62 and small deviation of 1.18. There are no null values.
 
 ```{r}
 summarize_ordinal_data(train$Baggage.handling)
-
-train$Baggage.handling <- factor(train$Baggage.handling, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Baggage.handling <- factor(test$Baggage.handling, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Baggage.handling) # 0 NAs
 ```
 
-### 2.2.17 Variable Checkin.service
+### 2.2.18 Variable Checkin.service
 
 **Checking.service** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. In constrast, this distribution seems more uniform with a huge mode between 3 and 4 (median of 3, mean of 3.27, deviation 1.26). There are no null values.
 
 ```{r}
 summarize_ordinal_data(train$Checkin.service)
+summarize_ordinal_data(train$Checkin.service) # 0 NAs
 
-train$Checkin.service <- factor(train$Checkin.service, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Checkin.service <- factor(test$Checkin.service, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
 ```
 
-### 2.2.18 Variable Inflight.service
+### 2.2.19 Variable Inflight.service
 
-**Inflight.service** is a self-describing ordinal categorical variable given by the customers in the range [0,5]. Its distribution is unimodal and highly right-skewed, with a median of 4, mean of 3.62 and a small deviation 1.17. There are no null values.
+**Inflight.service** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. Its distribution is unimodal and highly right-skewed, with a median of 4, mean of 3.61 and a small deviation 1.16. There is 1 null value.
 
 ```{r}
 summarize_ordinal_data(train$Inflight.service)
-
-train$Inflight.service <- factor(train$Inflight.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Inflight.service <- factor(test$Inflight.service, 
-                                      levels = c(0, 1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Inflight.service) # 0 NAs
 ```
 
-### 2.2.19 Variable Cleanliness
+### 2.2.20 Variable Cleanliness
 
 **Cleanliness** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. This variable has the most uniform distribution of them all, median 3, mean 3.26 and deviation 1.3, thus skewed slightly to the right. Again, there are no null values.
 
 ```{r}
 summarize_ordinal_data(train$Cleanliness)
-
-train$Cleanliness <- factor(train$Cleanliness, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
-
-test$Cleanliness <- factor(test$Cleanliness, 
-                                      levels = c(1, 2, 3, 4, 5), 
-                                      ordered = TRUE)
+summarize_ordinal_data(test$Cleanliness)  # 0 NAs
 ```
 
-### 2.2.20 Variable Departure.Delay.in.Minutes
+### 2.2.21 Variable Departure.Delay.in.Minutes
 
 **Departure.Delay.in.Minutes** is a discrete numerical finite variable that represents how many minutes this rated flight has been delayed, considering its scheduled departure. Its values range from 0 to 692, with a mean of 15, median of 0 and huge deviation of 38.45. There are 675 mild outliers and 413 severe ones. Its distribution looks astonishingly exponential, with a skewness coefficient of 5.99. Both inferential tests reject the hypothesis of normality. 
 
 ```{r}
-summary_and_normality_check(train$Departure.Delay.in.Minutes)
+outliers_indexes_dep_delay = summary_and_normality_check(train$Departure.Delay.in.Minutes)
+all_outliers[outliers_indexes] <- all_outliers[outliers_indexes_dep_delay] + 1
+table(all_outliers)
 ```
 
-### 2.2.21 Variable Arrival.Delay.in.Minutes
+### 2.2.22 Variable Arrival.Delay.in.Minutes
 
 **Arrival.Delay.in.minutes** is a discrete numerical finite variable that represents how many minutes this rated flight has been delayed, considering its scheduled arrival. Similarly to departure delay, its distribution has an astonishingly exponential shape, and a huge coefficient of skewness of 6.06. Has a mean of 15.28 but a median of 0, with values ranging between [0, 702] minutes, 12 null values, 669 mild outliers and 410 severe ones. Both inferential tests reject the hypothesis of normality.
 
 ```{r}
-summary_and_normality_check(train$Arrival.Delay.in.Minutes)
+outliers_indexes_arr_delay = summary_and_normality_check(train$Arrival.Delay.in.Minutes)
+all_outliers[outliers_indexes] <- all_outliers[outliers_indexes_arr_delay] + 1
+table(all_outliers)
 ```
 
-### 2.2.22 Variable satisfaction
+### 2.2.23 Variable satisfaction
 
 **satisfaction** is a target binary categorical variable that represents whether the customer is satisfied or not/neutral with its overall experience. The dataset is somewhat balanced with a slight bias towards neutral/dissatisfied (57.14% vs 42.86%). There are no null values.
 
 ```{r}
-summarize_ordinal_data(train$satisfaction)
-
-#Transform to factor 
-train$satisfaction <- as.factor(train$satisfaction)
-test$satisfaction <- as.factor(test$satisfaction)
+summarize_categorical_data(train$satisfaction)
+summarize_categorical_data(test$satisfaction)
 ```
+
+### Transform variables
+```{r}
+
+# factor variables 
+train[, c(1,2,4,5,23)] <- lapply(train[, c(1,2,4,5,23)], as.factor)
+test[, c(1,2,4,5,23)] <- lapply(test[, c(1,2,4,5,23)], as.factor)
+
+# numerical variables
+train[, c(3,6,21,22)] <- lapply(train[, c(3,6,21,22)], as.numeric)
+test[, c(3,6,21,22)] <- lapply(test[, c(3,6,21,22)], as.numeric)
+
+# ordinal variables 
+train[, c(7:20)] <- lapply(train[, c(7:20)], function(x) factor(x, levels = c(1, 2, 3, 4, 5), ordered = TRUE))
+test[, c(7:20)] <- lapply(test[, c(7:20)], function(x) factor(x, levels = c(1, 2, 3, 4, 5), ordered = TRUE))
+```
+
 
 ### 2.2.23 New variables defintion 
 
-TODO: mirar si aixo ens importa o no realment, per modelling pot ser interesant.
-
 ```{r}
+# age factor 
+train$AgeGroup <- cut(train$Age, breaks = c(-Inf, 18, 35, 60, Inf), 
+                      labels = c("Under 18", "18-35", "36-60","Over 60"))
+test$AgeGroup <- cut(test$Age, breaks = c(-Inf, 18, 35, 60, Inf), 
+                      labels = c("Under 18", "18-35", "36-60","Over 60"))
+
+
+# distance factor 
+quant <- quantile(train$Flight.Distance, probs = seq(0, 1, 0.333), na.rm = TRUE)
+train$f.FlightDist <- cut(train$Flight.Distance, 
+                          breaks = quant, 
+                          labels = c("Short Distance", "Medium Distance", "Long Distance"), 
+                          include.lowest = TRUE)
+
+quant2 <- quantile(test$Flight.Distance, probs = seq(0, 1, 0.333), na.rm = TRUE)
+test$f.FlightDist <- cut(test$Flight.Distance, 
+                          breaks = quant2, 
+                          labels = c("Short Distance", "Medium Distance", "Long Distance"), 
+                          include.lowest = TRUE)
+
+
+
+# delay arrival (binary)
+train$DelayedArrival <- as.factor(ifelse(train$Arrival.Delay.in.Minutes > 0, "DelayedArrival", "OK"))
+test$DelayedArrival <- as.factor(ifelse(test$Arrival.Delay.in.Minutes > 0, "DelayedArrival", "OK"))
+summary(train$DelayedArrival)
+
+# delay departure (binary) -->  podriem mirar si te algun tipo de relacio el que 
+# surti tard amb que ja responguin les enquestes de mal humor durant el vol 
+train$DelayedDeparture <- as.factor(ifelse(train$Departure.Delay.in.Minutes > 0, "DelayedDeparture", "OK"))
+test$DelayedDeparture <- as.factor(ifelse(test$Departure.Delay.in.Minutes > 0, "DelayedDeparture", "OK"))
+summary(train$DelayedDeparture)
+
 ```
 
 ## 2.3 Data quality report 
 
 This section provides a comprehensive overview of the dataset's quality, complementing the prior identification of univariate outliers and missing values with a visual summary to highlight key patterns and anomalies. The data quality report is structured into two parts: an analysis regarding the variables and a review of individual records (stating the number of outliers per individual and identifying multivariate outliers).
 
-TODO: falta tot lol :) ----> S'ha de tenir en compte que potser 0 en la enquesta vol dir que no s'ha puntuat (NULL VALUE), pero no hi ha cap mena de metadada al respecte en el enunciat.
+TODO: falta Multivariant outliers 
 
 ### 2.3.1 Variables
 
@@ -572,41 +536,60 @@ This first part of the data quality report assesses the quality of the data rega
 
 #### 2.3.1.1 Missing values and Errors
 
+We used the md.pattern function from the mice library to analyze the distribution of missing values across the dataset. This function provides a visual representation of missing data patterns, allowing us to identify the extent and location of missingness.
+
+Based on the results, we can conclude that the dataset is relatively clean, with 4590 observations (91.8%) containing complete data. However, certain variables exhibit notable levels of missing values, particularly those on the right side of the plot. 
+Departure.Arrival.time.convenient and Ease.of.Online.Booking have the highest number of missing values, with 247 and 217, respectively.Inflight.wifi.service has 149 missing values, while Online.boarding has 119.
+
+In addition, eight variables have fewer than 25 missing values, and 14 variables are completely free of missing data.
+
+To ensure the integrity of the dataset and support robust and unbiased modeling, all missing and erroneous values will be carefully imputed in a way that preserves the dataset’s original characteristics and patterns.
 
 ```{r}
-
+summary(train)
 md.pattern(train, rotate.names = T)
-
 ```
 
 #### 2.3.1.2 Outliers
 
-In this section a profiling of outliers will be done for the 4 numerical variables, just as a summary of the univariate data analysis performed on the past section 2.2. 
+In this section, we analyze the presence of outliers in the dataset, focusing on the four numerical variables: Age, Flight.Distance, Departure.Delay.in.Minutes, and Arrival.Delay.in.Minutes.
+ 
+Age: No outliers were detected in the Age variable, indicating that all recorded values fall within a reasonable and expected range for this dataset.
 
-```{r}
+Flight.Distance: A total of 95 mild outliers were identified in Flight.Distance, but no severe outliers were detected. This indicates that some flights are moderately longer than the majority, which is expected given variations in airline routes. These values are not concerning and reflect natural variability.
 
+Departure.Delay.in.Minutes: Shows 675 mild outliers and 413 severe outliers, indicating that a significant number of flights experienced delays longer than the typical range.
 
-```
+Arrival.Delay.in.Minutes: Similarly, Arrival.Delay.in.Minutes has 669 mild outliers and 410 severe outliers, closely mirroring the outliers in Departure.Delay.in.Minutes. This similarity is expected, as the arrival delay is inherently related to the departure delay. A delayed departure often leads to a delayed arrival unless measures such as flight rescheduling or speed adjustments are taken.
 
 
 ### 2.3.2 Individuals
+This second part of the data quality report assesses the number of outliers and missing values per individual and identifies which individuals are multivariate outliers.
 
 #### 2.3.2.1 Missing values and Errors
 
+Out of the total observations in the dataset, 4590 have no missing values across any variable. Additionally, 178 observations contain a missing value in one variable, 113 observations have missing values in two variables, 90 observations have missing values in three variables, and 29 individuals have missing values in 4 variables
 ```{r}
+na_counts <- rowSums(is.na(train))
+table(na_counts)
 
 ```
 
 #### 2.3.2.2 Outliers 
+Since there are only four numerical variables in the dataset, and the Age variable does not have any outliers, the maximum number of outliers an observation can have is three. Based on the analysis, the distribution of outliers across observations is as follows:
+      4140 observations have no outliers at all.
+      297 observations have one outlier.
+      547 observations have two outliers, and notably, 545 of these are outliers in both Departure.Delay.in.Minutes and Arrival.Delay.in.Minutes. This overlap is expected, as these variables are closely related and delays in departure often propagate to arrival delays.
+      13 observations have outliers in all three variables.
+      
+This analysis highlights that most observations are free of outliers, while the relationship between Departure.Delay.in.Minutes and Arrival.Delay.in.Minutes contributes significantly to the overlapping outliers.
 
 ```{r}
-
+table(all_outliers)
+common_indexes <- intersect(outliers_indexes_arr_delay, outliers_indexes_dep_delay);length(common_indexes) # 558
 ```
 
 #### 2.3.2.3 Multivariant Outliers
-
-TODO 
-
 
 ```{r}
 result <- find_valid_moutlier(train, quantile = 0.95)
@@ -649,23 +632,25 @@ catdes(bi_mvout_df, num.var=NULL, proba=0.05)
 ```
 
 ## 2.4 Imputation 
-
-TODO: Revisar aixo s'ha quedat a mitges pero diria que ja esta tot
-
-In this section, all the missing values previously identified are addressed through an imputation process. To avoid repetitive code, a function is first defined to perform the imputation consistently across variables. The imputation is then carried out for each variable with missing values, and a brief commentary is provided for each to discuss the imputation approach and its impact on the data.
+In this section, all the missing values previously identified are addressed through an imputation process using mice function.
 
 Note that values are imputed both in the training and test sets, as stated in the statement of the project. 
-
-### 2.4.1 **Arrival.Delay.in.Minutes**
+TO-DO: check imputation values with plots (la funcio de plot que hi ha ara no funciona be amb aquesta variable)
 
 ```{r}
-imp.res <- imputation_function("Arrival.Delay.in.Minutes", train)
-train[imp.res$na_indices,"Arrival.Delay.in.Minutes"] = imp.res$imp_values
+summary(train)
+imputed_data <- mice(train)
+df_complete <- complete(imputed_data)
+summary(df_complete)
 
-imp.res <- imputation_function("Arrival.Delay.in.Minutes", test)
-test[imp.res$na_indices,"Arrival.Delay.in.Minutes"] = imp.res$imp_values
+plot_quantiles_comparison(train$Ease.of.Online.Booking, df_complete$Ease.of.Online.Booking,"Ease.of.Online.Booking")
+train <- df_complete
 
+imputed_data_test <- mice(test)
+df_complete_test <- complete(imputed_data_test)
+test <- df_complete_test
 ```
+
 ### 2.5 Profiling analysis and correlations
 
 The target binary variable **satisfaction** splits the data unevenly: 57.14% neutral or dissastified vs 42.86% satisfied. Moreover this variable contains no null values at all. To delve deeper into the main differences between these 2 groups, a clustering profiling will be performed. Just as a remainder, the dataset contains 18 categorical variables (14 ordinal, 3 binary, 1 ternary) and 4 numerical, besides the target variable.
