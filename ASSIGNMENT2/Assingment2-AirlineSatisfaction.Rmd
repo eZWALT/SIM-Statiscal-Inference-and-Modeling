@@ -251,7 +251,7 @@ plot_quantiles_comparison <- function(original, imputed, variable) {
   
   # Compute quantiles for original and imputed values
   quantiles_original <- quantile(original, probs = seq(0, 1, 0.1), na.rm = TRUE)
-  quantiles_imputed <- quantile(imputed, probs = seq(0, 1, 0.1), na.rm = FALSE)
+  quantiles_imputed <- quantile(imputed, probs = seq(0, 1, 0.1), na.rm = TRUE)  # Set na.rm = TRUE here
   
   # Plot quantile comparison
   plot(seq(0, 1, 0.1), quantiles_original, type = "l", col = "blue", lwd = 2,
@@ -261,6 +261,7 @@ plot_quantiles_comparison <- function(original, imputed, variable) {
   legend("topright", legend = c("Original", "Imputed"),
          col = c("blue", "red"), lwd = 2)
 }
+
 ```
 
 
@@ -663,7 +664,6 @@ catdes(bi_mvout_df, num.var=28, proba=0.05)
 In this section, all the missing values previously identified are addressed through an imputation process using mice function.
 
 Note that values are imputed both in the training and test sets, as stated in the statement of the project. 
-TO-DO: check imputation values with plots (la funcio de plot que hi ha ara no funciona be amb aquesta variable)
 
 ```{r}
 summary(train)
@@ -671,14 +671,23 @@ imputed_data <- mice(train)
 df_complete <- complete(imputed_data)
 summary(df_complete)
 
+```
+
+```{r}
+
+# AIXO peta, estic editant la funcio
+quantiles_original <- quantile(train, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_imputed <- quantile(df_complete, probs = seq(0, 1, 0.1), na.rm = TRUE)  # Set na.rm = TRUE here
 plot_quantiles_comparison(train$Ease.of.Online.Booking, df_complete$Ease.of.Online.Booking,"Ease.of.Online.Booking")
 train <- df_complete
 
 imputed_data_test <- mice(test)
 df_complete_test <- complete(imputed_data_test)
 test <- df_complete_test
-```
 
+
+
+```
 ### 2.5 Profiling analysis and correlations
 
 The target binary variable **satisfaction** splits the data unevenly: 57.14% neutral or dissastified vs 42.86% satisfied. Moreover this variable contains no null values at all. To delve deeper into the main differences between these 2 groups, a clustering profiling will be performed. Just as a remainder, the dataset contains 18 categorical variables (14 ordinal, 3 binary, 1 ternary) and 4 numerical, besides the target variable.
@@ -706,6 +715,8 @@ res_cat$quanti
 
 
 Now, Looking at the relationship between numerical variables, an obvious perfect positive correlation is divised: Departure delay and Arrival delay. Other variables have negligible relations and variables Age and Flight.distance share a small positive correlation.
+
+
 
 ```{r}
 corrplot(cor(train[, num_vars]))
