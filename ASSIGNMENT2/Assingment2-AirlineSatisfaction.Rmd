@@ -745,30 +745,100 @@ summary(m0)
 #Numerical variables
 m1 <- glm(satisfaction ~ Age + Flight.Distance + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family=binomial, data=train)
 summary(m1)
-# Wald tests for all parameters = 0 (Same as summary)
-anova(m1, test="LR")
+vif( m1 )
+par( mfrow=c(2,2))
+plot( m1, id.n=0 )
 
-# Model equivalence testing
-anova(m0, m1, test="Chisq")
-waldtest(m0, m1, test="Chisq")
+# transformations 
+m2 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family=binomial, data=train)
+par( mfrow=c(2,2))
+plot( m2, id.n=0 )
+
+m3 <- glm(satisfaction ~ poly(Age,3) + Flight.Distance + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family=binomial, data=train)
+par( mfrow=c(2,2))
+plot( m3, id.n=0 )
+
+anova(m2,m3) # m3 better than m2
+
+anova(m1,m3) # m3 better than m1
+
+m4 <- glm(satisfaction ~ poly(Age,3) + log(Flight.Distance) + log(Arrival.Delay.in.Minutes+1) + log(Departure.Delay.in.Minutes+1), family=binomial, data=train)
+
+anova(m3, m4) # m4 worst than m3 
+AIC(m1,m2,m3, m4) # m3 small AIC -> m3 is the best at the moment
 
 # All variables
-m2 <- glm(satisfaction ~ Age + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes , family=binomial, data=train)
-summary(m2)
+summary(train)
+m5 <- glm(satisfaction ~ poly(Age,3) + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes , family=binomial, data=train)
+summary(m5)
 
-anova(m1, m2, test="Chisq")
-waldtest(m1, m2, test="Chisq")
+anova(m3, m5, test="Chisq") # m5 better than m3 
+waldtest(m3, m5, test="Chisq")
 
-# All variables with interactions 
-m3 <- NULL
+# with new factors 
+m6 <- glm(satisfaction ~ poly(Age,3) + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes + AgeGroup + f.FlightDist + DelayedArrival + DelayedDeparture , family=binomial, data=train)
 
+anova(m5,m6) # m6 better than m5
+AIC(m3,m5,m6) 
+
+m7 <- step(m6)
+# satisfaction ~ poly(Age, 3) + Customer.Type + Type.of.Travel + 
+#    Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
+#    Ease.of.Online.booking + Gate.location + Online.boarding + 
+#    Seat.comfort + Inflight.entertainment + On.board.service + 
+#    Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + 
+#   Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes + 
+#   AgeGroup + DelayedArrival
+
+anova(m6,m7)
+AIC(m6,m7) # m7 better but based on the anova results they are the same (NO SE SI ESTA BE AIXO)
+
+# Add interactions with f.flightDist
+m8 <-  glm(satisfaction ~ poly(Age,3) + Customer.Type + Type.of.Travel + 
+     Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
+     Ease.of.Online.booking + Gate.location + Online.boarding + 
+     Seat.comfort*f.FlightDist + Inflight.entertainment + On.board.service + 
+     Leg.room.service*f.FlightDist + Baggage.handling + Checkin.service + Inflight.service + 
+     Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes+
+     AgeGroup + DelayedArrival, family = binomial, data = train)
+summary(m8)
+
+anova(m7,m8)
+AIC(m7,m8) # m8 better # 2135.30
+
+vif(m8) 
+# si en canvi de Poly(Age, 3) poso Age el AIC augmenta a 2140 pero el valor del GVIF baixa de 43 a 5 
+# si borro el Departure.Delay.in.Minutes el AIC augmenta a 2138 pero el valor del GIF de arrival.Delay.in.Minutes baixa de 18 a 1 
+
+# Add transformation with DelayedArrival 
+m9 <-  glm(satisfaction ~ poly(Age,3) + Customer.Type + Type.of.Travel*DelayedArrival + 
+     Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
+     Ease.of.Online.booking + Gate.location + Online.boarding + 
+     Seat.comfort*f.FlightDist + Inflight.entertainment + On.board.service + 
+     Leg.room.service*f.FlightDist + Baggage.handling + Checkin.service + Inflight.service + 
+     Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes+
+     AgeGroup, family = binomial, data = train)
+AIC(m8,m9) # m9 better -> AIC = 2128 
+
+# Add transformation with AgeGroup --> NO WORTH IT 
+m10 <-  glm(satisfaction ~ poly(Age,3) + Customer.Type + Type.of.Travel*DelayedArrival + 
+     Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
+     Ease.of.Online.booking*AgeGroup + Gate.location + Online.boarding*AgeGroup + 
+     Seat.comfort*f.FlightDist + Inflight.entertainment*AgeGroup + On.board.service + 
+     Leg.room.service*f.FlightDist + Baggage.handling + Checkin.service + Inflight.service + 
+     Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family = binomial, data = train)
+AIC(m9,m10) # m9 better -> 2128 
+par(mfrow=c(2,2))
+plot(m9) 
+plot(m4) # model with just numerical variables 
+summary(m9)
 ```
 
 Now after some preliminary model exploration, step-wise regression will be performed in order to find the best possible model according to Akaike's criterion.
 
 ```{r}
 
-mAIC <- stepAIC(m2)
+mAIC <- stepAIC(m7)
 
 mAIC
 ```
@@ -776,18 +846,18 @@ mAIC
 ## 3.2 Effects study
 
 ```{r}
-plot(allEffects(m2))
+plot(allEffects(m7))
 ```
 
 ## 3.3 Residual analysis and Influential data study
 
 ```{r}
 # Use for glms 
-residualPlots(m2)
+residualPlots(m7)
 influencePlot(m2, id.n=5)
 
 # 913, 951 can be considered influent data (However, this doesn't equal to being outlier or noise... no need to remove values with large hat values)
-Boxplot(cooks.distance(m2), id=list(labels=rownames(dfwork)))
+Boxplot(cooks.distance(m7), id=list(labels=rownames(dfwork)))
 ```
 
 ## 3.4 Final model interpretation
