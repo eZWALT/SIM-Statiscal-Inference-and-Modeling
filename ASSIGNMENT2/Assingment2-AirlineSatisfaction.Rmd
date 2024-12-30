@@ -36,6 +36,10 @@ In the modeling phase, we utilize the training dataset to build and refine predi
 
 ```{r include=FALSE}
 
+#set eval to TRUE to produce the knit of the ANEX in pdf format.
+knitr::opts_chunk$set(eval = FALSE, echo = TRUE) 
+
+set.seed(123)
 # Libraries, cleanup and global variables
 library(car)
 library(AER)
@@ -67,9 +71,16 @@ test$X <- NULL
 test$id <- NULL
 
 #Global variables 
-num_vars <- c("Age", "Flight.Distance", "Departure.Delay.in.Minutes", "Arrival.Delay.in.Minutes")
+num_vars <- c("Age", "Flight.Distance", "Departure.Delay.in.Minutes",
+              "Arrival.Delay.in.Minutes")
 #Including satisfaction target
-categ_vars <- c("Gender", "Customer.Type", "Type.of.Travel", "Class", "Inflight.wifi.service", "Departure.Arrival.time.convenient", "Ease.of.Online.booking", "Gate.location", "Food.and.drink", "Online.boarding", "Seat.comfort", "Inflight.entertainment", "On.board.service", "Leg.room.service", "Baggage.handling", "Checkin.service", "Inflight.service", "Cleanliness", "satisfaction")
+categ_vars <- c("Gender", "Customer.Type", "Type.of.Travel", "Class", 
+                "Inflight.wifi.service", "Departure.Arrival.time.convenient",
+                "Ease.of.Online.booking", "Gate.location", "Food.and.drink", 
+                "Online.boarding", "Seat.comfort", "Inflight.entertainment", 
+                "On.board.service", "Leg.room.service", "Baggage.handling", 
+                "Checkin.service", "Inflight.service", "Cleanliness", 
+                "satisfaction")
 all_outliers <- numeric(5000)
 ```
 
@@ -150,7 +161,8 @@ summarize_ordinal_data <- function(data) {
   
   n <- length(table(data))
   
-  barplot(props, col=rainbow(n), main="Distribution of Ordinal variable", xlab="Categories", ylab="Relative Freq.")
+  barplot(props, col=rainbow(n), main="Distribution of Ordinal variable", 
+          xlab="Categories", ylab="Relative Freq.")
   print("Mean: ")
   print(mean(data, na.rm = TRUE))
   print("Median: ")
@@ -171,7 +183,8 @@ summarize_categorical_data <- function(data) {
   
   n <- length(table(data))
   
-  barplot(props, col=rainbow(n), main="Distribution of Ordinal variable", xlab="Categories", ylab="Relative Freq.")
+  barplot(props, col=rainbow(n), main="Distribution of Ordinal variable", 
+          xlab="Categories", ylab="Relative Freq.")
   print("Number of nulls: ")
   print(sum(is.na(data)))
 }
@@ -251,7 +264,7 @@ plot_quantiles_comparison <- function(original, imputed, variable) {
   
   # Compute quantiles for original and imputed values
   quantiles_original <- quantile(original, probs = seq(0, 1, 0.1), na.rm = TRUE)
-  quantiles_imputed <- quantile(imputed, probs = seq(0, 1, 0.1), na.rm = TRUE)  # Set na.rm = TRUE here
+  quantiles_imputed <- quantile(imputed, probs = seq(0, 1, 0.1), na.rm = TRUE) 
   
   # Plot quantile comparison
   plot(seq(0, 1, 0.1), quantiles_original, type = "l", col = "blue", lwd = 2,
@@ -344,8 +357,10 @@ test$Inflight.wifi.service <- summarize_ordinal_data(test$Inflight.wifi.service)
 **Departure.Arrival.time.convenient** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. The majority of values are grouped between 4 and 5, with a mean of 3.22, median of 3 and deviation of 1.38. The distribution is right-skewed and has a heavy left tail. There are 247 values equal to 0, we consider them as Not Applicable (NA).
 
 ```{r}
-train$Departure.Arrival.time.convenient <- summarize_ordinal_data(train$Departure.Arrival.time.convenient)
-test$Departure.Arrival.time.convenient<- summarize_ordinal_data(test$Departure.Arrival.time.convenient) # 115 NAs
+train$Departure.Arrival.time.convenient <- 
+  summarize_ordinal_data(train$Departure.Arrival.time.convenient)
+test$Departure.Arrival.time.convenient<- 
+  summarize_ordinal_data(test$Departure.Arrival.time.convenient) # 115 NAs
 ```
 
 ### 2.2.9 Variable Ease.of.Online.booking
@@ -353,8 +368,10 @@ test$Departure.Arrival.time.convenient<- summarize_ordinal_data(test$Departure.A
 **Ease.of.Online.booking** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. The distribution of ratings is somewhat bell-shaped and unimodal, wtih a mean of 2.89, median 3 and deviation of 1.29. There are 127 null values.
 
 ```{r}
-train$Ease.of.Online.booking <- summarize_ordinal_data(train$Ease.of.Online.booking)
-test$Ease.of.Online.booking  <- summarize_ordinal_data(test$Ease.of.Online.booking) # 85 NAs
+train$Ease.of.Online.booking <- 
+  summarize_ordinal_data(train$Ease.of.Online.booking)
+test$Ease.of.Online.booking  <- 
+  summarize_ordinal_data(test$Ease.of.Online.booking) # 85 NAs
 
 ```
 
@@ -399,8 +416,10 @@ test$Seat.comfort <- summarize_ordinal_data(test$Seat.comfort) # 0 NAs
 **Inflight.entertainment** is a self-describing ordinal categorical variable given by the customers in the range [1,5]. Its distribution is unimodal and slightly right-skewed, with a median of 4, mean 3.34 and deviation of 1.33. There is 1 null value. 
 
 ```{r}
-train$Inflight.entertainment <- summarize_ordinal_data(train$Inflight.entertainment)
-test$Inflight.entertainment <- summarize_ordinal_data(test$Inflight.entertainment) # 0 NAs
+train$Inflight.entertainment <- 
+  summarize_ordinal_data(train$Inflight.entertainment)
+test$Inflight.entertainment <- 
+  summarize_ordinal_data(test$Inflight.entertainment) # 0 NAs
 
 ```
 
@@ -464,7 +483,8 @@ test$Cleanliness <- summarize_ordinal_data(test$Cleanliness)  # 0 NAs
 **Departure.Delay.in.Minutes** is a discrete numerical finite variable that represents how many minutes this rated flight has been delayed, considering its scheduled departure. Its values range from 0 to 692, with a mean of 15, median of 0 and huge deviation of 38.45. There are 675 mild outliers and 413 severe ones. Its distribution looks astonishingly exponential, with a skewness coefficient of 5.99. Both inferential tests reject the hypothesis of normality. 
 
 ```{r}
-outliers_indexes_dep_delay <- summary_and_normality_check(train$Departure.Delay.in.Minutes)
+outliers_indexes_dep_delay <- 
+  summary_and_normality_check(train$Departure.Delay.in.Minutes)
 all_outliers[outliers_indexes] <- all_outliers[outliers_indexes_dep_delay] + 1
 table(all_outliers)
 ```
@@ -474,7 +494,8 @@ table(all_outliers)
 **Arrival.Delay.in.minutes** is a discrete numerical finite variable that represents how many minutes this rated flight has been delayed, considering its scheduled arrival. Similarly to departure delay, its distribution has an astonishingly exponential shape, and a huge coefficient of skewness of 6.06. Has a mean of 15.28 but a median of 0, with values ranging between [0, 702] minutes, 12 null values, 669 mild outliers and 410 severe ones. Both inferential tests reject the hypothesis of normality.
 
 ```{r}
-outliers_indexes_arr_delay <- summary_and_normality_check(train$Arrival.Delay.in.Minutes)
+outliers_indexes_arr_delay <- 
+  summary_and_normality_check(train$Arrival.Delay.in.Minutes)
 all_outliers[outliers_indexes] <- all_outliers[outliers_indexes_arr_delay] + 1
 table(all_outliers)
 ```
@@ -503,8 +524,12 @@ train[, c(3,6,21,22)] <- lapply(train[, c(3,6,21,22)], as.numeric)
 test[, c(3,6,21,22)] <- lapply(test[, c(3,6,21,22)], as.numeric)
 
 # ordinal variables 
-train[, c(7:20)] <- lapply(train[, c(7:20)], function(x) factor(x, levels = c(1, 2, 3, 4, 5), ordered = TRUE))
-test[, c(7:20)] <- lapply(test[, c(7:20)], function(x) factor(x, levels = c(1, 2, 3, 4, 5), ordered = TRUE))
+train[, c(7:20)] <- lapply(train[, c(7:20)], 
+                           function(x) factor(x, levels = c(1, 2, 3, 4, 5),
+                                              ordered = TRUE))
+test[, c(7:20)] <- lapply(test[, c(7:20)], 
+                          function(x) factor(x, levels = c(1, 2, 3, 4, 5),
+                                             ordered = TRUE))
 
 str(train)
 ```
@@ -531,26 +556,30 @@ test$AgeGroup <- cut(test$Age, breaks = c(-Inf, 18, 35, 60, Inf),
 quant <- quantile(train$Flight.Distance, probs = seq(0, 1, 0.333), na.rm = TRUE)
 train$f.FlightDist <- cut(train$Flight.Distance, 
                           breaks = quant, 
-                          labels = c("Short Distance", "Medium Distance", "Long Distance"), 
+                          labels = c("Short Distance", "Medium Distance",
+                                     "Long Distance"), 
                           include.lowest = TRUE)
 
 quant2 <- quantile(test$Flight.Distance, probs = seq(0, 1, 0.333), na.rm = TRUE)
 test$f.FlightDist <- cut(test$Flight.Distance, 
                           breaks = quant2, 
-                          labels = c("Short Distance", "Medium Distance", "Long Distance"), 
+                          labels = c("Short Distance", "Medium Distance",
+                                     "Long Distance"), 
                           include.lowest = TRUE)
 
 
 
 # delay arrival (binary)
-train$DelayedArrival <- as.factor(ifelse(train$Arrival.Delay.in.Minutes > 0, "DelayedArrival", "OK"))
-test$DelayedArrival <- as.factor(ifelse(test$Arrival.Delay.in.Minutes > 0, "DelayedArrival", "OK"))
+train$DelayedArrival <- as.factor(ifelse(train$Arrival.Delay.in.Minutes > 0,
+                                         "DelayedArrival", "OK"))
+test$DelayedArrival <- as.factor(ifelse(test$Arrival.Delay.in.Minutes > 0,
+                                        "DelayedArrival", "OK"))
 summary(train$DelayedArrival)
 
-# delay departure (binary) -->  podriem mirar si te algun tipo de relacio el que 
-# surti tard amb que ja responguin les enquestes de mal humor durant el vol 
-train$DelayedDeparture <- as.factor(ifelse(train$Departure.Delay.in.Minutes > 0, "DelayedDeparture", "OK"))
-test$DelayedDeparture <- as.factor(ifelse(test$Departure.Delay.in.Minutes > 0, "DelayedDeparture", "OK"))
+train$DelayedDeparture <- as.factor(ifelse(train$Departure.Delay.in.Minutes > 0,
+                                           "DelayedDeparture", "OK"))
+test$DelayedDeparture <- as.factor(ifelse(test$Departure.Delay.in.Minutes > 0,
+                                          "DelayedDeparture", "OK"))
 summary(train$DelayedDeparture)
 
 ```
@@ -566,6 +595,8 @@ This first part of the data quality report assesses the quality of the data rega
 #### 2.3.1.1 Missing values and Errors
 
 We used the md.pattern function from the mice library to analyze the distribution of missing values across the dataset. This function provides a visual representation of missing data patterns, allowing us to identify the extent and location of missingness.
+
+Note that we considered errors (and thus set to NA) observations with value 0 in an ordinal variable with range 1-5.
 
 Based on the results, we can conclude that the dataset is relatively clean, with 4590 observations (91.8%) containing complete data. However, certain variables exhibit notable levels of missing values, particularly those on the right side of the plot. 
 Departure.Arrival.time.convenient and Ease.of.Online.Booking have the highest number of missing values, with 247 and 217, respectively.Inflight.wifi.service has 149 missing values, while Online.boarding has 119.
@@ -606,16 +637,18 @@ table(na_counts)
 
 #### 2.3.2.2 Outliers 
 Since there are only four numerical variables in the dataset, and the Age variable does not have any outliers, the maximum number of outliers an observation can have is three. Based on the analysis, the distribution of outliers across observations is as follows:
-      4140 observations have no outliers at all.
-      297 observations have one outlier.
-      547 observations have two outliers, and notably, 545 of these are outliers in both Departure.Delay.in.Minutes and Arrival.Delay.in.Minutes. This overlap is expected, as these variables are closely related and delays in departure often propagate to arrival delays.
-      13 observations have outliers in all three variables.
+- 4140 observations have no outliers at all.
+- 297 observations have one outlier.
+- 547 observations have two outliers, and notably, 545 of these are outliers in both Departure.Delay.in.Minutes and Arrival.Delay.in.Minutes. This overlap is expected, as these variables are closely related and delays in departure often propagate to arrival delays.
+- 13 observations have outliers in all three variables.
       
 This analysis highlights that most observations are free of outliers, while the relationship between Departure.Delay.in.Minutes and Arrival.Delay.in.Minutes contributes significantly to the overlapping outliers.
 
 ```{r}
 table(all_outliers)
-common_indexes <- intersect(outliers_indexes_arr_delay, outliers_indexes_dep_delay);length(common_indexes) # 558
+common_indexes <- intersect(outliers_indexes_arr_delay, 
+                            outliers_indexes_dep_delay)
+length(common_indexes) # 558
 ```
 
 #### 2.3.2.3 Multivariate Outliers
@@ -624,11 +657,15 @@ The *find_valid_moutlier* function identifies the largest combination of numeric
 
 Since the Moutlier function depends on some stochastic processes, one can get different results when executing it several times. Thus, we comment the results obtained in one single execution, which has been selected carefully to represent the average values.
 
+There are 213 multivariate outliers, which we proceed to characterize in the next part.
+
 ```{r}
 result <- find_valid_moutlier(train, quantile = 0.95)
 res.out <- result$res_mout; 
-mult.outliers <- result$multoutliers; length(mult.outliers)
+mult.outliers <- result$multoutliers; 
 
+#Print number of outliers
+length(mult.outliers)
 # Plot Multivariate Outliers
 dev.off()
 plot(res.out$md, res.out$rd)
@@ -645,7 +682,6 @@ From the analysis of quantitative variables, we see strong associations with Fli
 
 Profiling the outliers by cluster, we observe distinct patterns. For the "Not M.O." (Non-Outlier) group, the mean values for Age and Flight Distance are relatively close to the overall means. In contrast, the "Yes M.O." (Outlier) group shows significant deviations in both variables, with outliers being characterized by extremely high or low Flight Distance values and older Age profiles.
 
-
 ```{r}
 bi_mvout_df <- train
 #Binary factor if its a  multivariate outlier
@@ -660,7 +696,11 @@ catdes(bi_mvout_df, num.var=28, proba=0.05)
 
 ```
 
+
+At the moment, we do not remove any observation. However, this are potential influential data for the model that we build as follows, so we will assess carefully which data biases too much the model and see if it is wise to remove it from the data set after computing each model version.
+
 ## 2.4 Imputation 
+
 In this section, all the missing values previously identified are addressed through an imputation process using mice function.
 
 Note that values are imputed both in the training and test sets, as stated in the statement of the project. 
@@ -673,21 +713,59 @@ summary(df_complete)
 
 ```
 
+Here, we check the correctness of imputed values.
+
 ```{r}
+library(dplyr)
+# Identify columns with NAs
+cols_with_na <- names(train)[sapply(train, function(x) any(is.na(x)))]
+numeric_cols_with_na <- cols_with_na[sapply(train[cols_with_na], is.numeric)]
 
-# AIXO peta, estic editant la funcio
-quantiles_original <- quantile(train, probs = seq(0, 1, 0.1), na.rm = TRUE)
-quantiles_imputed <- quantile(df_complete, probs = seq(0, 1, 0.1), na.rm = TRUE)  # Set na.rm = TRUE here
-plot_quantiles_comparison(train$Ease.of.Online.Booking, df_complete$Ease.of.Online.Booking,"Ease.of.Online.Booking")
-train <- df_complete
+# Numeric variables
+quantiles_original <- quantile(train$Arrival.Delay.in.Minutes, 
+                               probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantiles_original
+quantiles_imputed <- quantile(df_complete$Arrival.Delay.in.Minutes, 
+                              probs = seq(0, 1, 0.1), na.rm = TRUE) 
+quantiles_imputed
 
-imputed_data_test <- mice(test)
-df_complete_test <- complete(imputed_data_test)
-test <- df_complete_test
+Boxplot(train$Arrival.Delay.in.Minutes)
+Boxplot(df_complete$Arrival.Delay.in.Minutes)
 
+#Categorical variables
+categorical <- cols_with_na[!sapply(train[cols_with_na], is.numeric)]
+
+# Loop through each variable
+for (var in categorical) {
+  # Print the table comparison for both datasets
+  print(list(Train = table(train[[var]]), Complete = table(df_complete[[var]])))
+  
+  # Create and print the superimposed bar plot
+  print(
+    ggplot(rbind(data.frame(ServiceLevel = train[[var]], Dataset = "Train"),
+                 data.frame(ServiceLevel = df_complete[[var]], 
+                            Dataset = "Complete")),
+           aes(x = factor(ServiceLevel), fill = Dataset)) +
+      geom_bar(position = "identity", alpha = 0.5) +
+      labs(title = paste("Comparison of", var, "Service Level"))
+  )
+}
 
 
 ```
+
+Now that we have checked the validity of the imputed values, we assign them to the main data frame and impute values in the test set.
+
+```{r}
+# Impute values to the original df
+train <- df_complete
+
+# Impute test data
+imputed_data_test <- mice(test)
+df_complete_test <- complete(imputed_data_test)
+test <- df_complete_test
+```
+
 ### 2.5 Profiling analysis and correlations
 
 The target binary variable **satisfaction** splits the data unevenly: 57.14% neutral or dissastified vs 42.86% satisfied. Moreover this variable contains no null values at all. To delve deeper into the main differences between these 2 groups, a clustering profiling will be performed. Just as a remainder, the dataset contains 18 categorical variables (14 ordinal, 3 binary, 1 ternary) and 4 numerical, besides the target variable.
@@ -703,10 +781,12 @@ Finally, taking a glance over **quanti** output we can gather numerical insights
 ```{r}
 res_cat <- catdes(train, proba=0.05, num.var=23)
 
-#Find categorical varibales that are significantly related to satisfaction ---> Chi^2 test
+#Find categorical varibales that are significantly related to satisfaction
+#Chi^2 test
 res_cat$test.chi2
 
-#Find numerical variables that are significantly related to satisfaction ---> Anova/T test
+#Find numerical variables that are significantly related to satisfaction 
+# Anova/T test
 res_cat$quanti.var
 
 #Compare the 2 clusters asessing numerical differences ---> v test
@@ -716,8 +796,6 @@ res_cat$quanti
 
 Now, Looking at the relationship between numerical variables, an obvious perfect positive correlation is divised: Departure delay and Arrival delay. Other variables have negligible relations and variables Age and Flight.distance share a small positive correlation.
 
-
-
 ```{r}
 corrplot(cor(train[, num_vars]))
 ```
@@ -725,183 +803,654 @@ corrplot(cor(train[, num_vars]))
 
 # 3. Modeling 
 
-## 3.1 Model Discovery and Feature Selection
+First, note that we treat the model Nominally, as the response variable *Satisfaction* have no inherent order.
 
-In this section an initial assessment of plausible models for modelling satisfaction variable will be presented, keeping explainability and performance as the main focus of this discovery process. The main tools that have been used in order to find the best possible models are the following:
+## 3.1 Modeling with numeric variables & Residual Analysis
 
-1. Inferential tests: 
-2. Goodness of fit: 
-3. Residual analysis:
+To see which numeric variables provide value to the model, we first create the null model as m0. 
 
-Firstly, a model with only numerical variables gets a residual deviance of 6284.6 with 4995 degrees of freedom, which is a big improvement from the null model. However, here we can see that Arrival.Delay variable barely passes the 5% significance ratio with a p-value of 0.02 while Depature.Delay.in.Minutes does not pass the Wald test, we cannot reject that this parameter is equal to 0. Just to confirm that m1 is different to m0, Anova chisq-tests or wald-tests can be performed given that this 2 models are nested. This procedure will be used throughout the rest of the model discovery procedure.
+In the case of the null model, the intercept estimate is \( \hat{\beta}_0 = -0.28757 \). This means that the log-odds of satisfaction when no explanatory variables are included is -0.28757. The corresponding probability \( P(\text{satisfaction} = 1) \) can be calculated by converting the log-odds to a probability:
 
-The second model m2 which is presented is that containing all the 4 numerical variables and 18 categorical. This model has a significant lower deviance compared to the Null model m0 (6831.2 vs 1787.2 with 72 degrees of freedom less).
+\[
+P(\text{satisfaction} = 1) = \frac{1}{1 + e^{-\hat{\beta}_0}} = \frac{1}{1 + e^{0.28757}} \approx 0.428
+\]
+
+The AIC (Akaike Information Criterion) value is 6831.2. 
 
 ```{r}
+# Set satisfaction to 0 or 1
+train$satisfaction <- ifelse(train$satisfaction == "satisfied", 1, 0)
+test$satisfaction <- ifelse(test$satisfaction == "satisfied", 1, 0)
+
+# Verify the transformation
+summary(as.factor(train$satisfaction))
+summary(as.factor(test$satisfaction))
+
+
+
 #Null model
 m0 <- glm(satisfaction ~ 1, family=binomial, data=train)
 summary(m0)
+AIC(m0)
 
-#Numerical variables
-m1 <- glm(satisfaction ~ Age + Flight.Distance + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family=binomial, data=train)
-summary(m1)
-vif( m1 )
-par( mfrow=c(2,2))
-plot( m1, id.n=0 )
-
-# transformations 
-m2 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family=binomial, data=train)
-par( mfrow=c(2,2))
-plot( m2, id.n=0 )
-
-m3 <- glm(satisfaction ~ poly(Age,3) + Flight.Distance + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family=binomial, data=train)
-par( mfrow=c(2,2))
-plot( m3, id.n=0 )
-
-anova(m2,m3) # m3 better than m2
-
-anova(m1,m3) # m3 better than m1
-
-m4 <- glm(satisfaction ~ poly(Age,3) + log(Flight.Distance) + log(Arrival.Delay.in.Minutes+1) + log(Departure.Delay.in.Minutes+1), family=binomial, data=train)
-
-anova(m3, m4) # m4 worst than m3 
-AIC(m1,m2,m3, m4) # m3 small AIC -> m3 is the best at the moment
-
-# All variables
-summary(train)
-m5 <- glm(satisfaction ~ poly(Age,3) + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes , family=binomial, data=train)
-summary(m5)
-
-anova(m3, m5, test="Chisq") # m5 better than m3 
-waldtest(m3, m5, test="Chisq")
-
-# with new factors 
-m6 <- glm(satisfaction ~ poly(Age,3) + Customer.Type + Gender + Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + Departure.Arrival.time.convenient + Ease.of.Online.booking + Gate.location + Food.and.drink + Online.boarding + Seat.comfort + Inflight.entertainment + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes + AgeGroup + f.FlightDist + DelayedArrival + DelayedDeparture , family=binomial, data=train)
-
-anova(m5,m6) # m6 better than m5
-AIC(m3,m5,m6) 
-
-m7 <- step(m6)
-# satisfaction ~ poly(Age, 3) + Customer.Type + Type.of.Travel + 
-#    Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
-#    Ease.of.Online.booking + Gate.location + Online.boarding + 
-#    Seat.comfort + Inflight.entertainment + On.board.service + 
-#    Leg.room.service + Baggage.handling + Checkin.service + Inflight.service + 
-#   Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes + 
-#   AgeGroup + DelayedArrival
-
-anova(m6,m7)
-AIC(m6,m7) # m7 better but based on the anova results they are the same (NO SE SI ESTA BE AIXO)
-
-# Add interactions with f.flightDist
-m8 <-  glm(satisfaction ~ poly(Age,3) + Customer.Type + Type.of.Travel + 
-     Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
-     Ease.of.Online.booking + Gate.location + Online.boarding + 
-     Seat.comfort*f.FlightDist + Inflight.entertainment + On.board.service + 
-     Leg.room.service*f.FlightDist + Baggage.handling + Checkin.service + Inflight.service + 
-     Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes+
-     AgeGroup + DelayedArrival, family = binomial, data = train)
-summary(m8)
-
-anova(m7,m8)
-AIC(m7,m8) # m8 better # 2135.30
-
-vif(m8) 
-# si en canvi de Poly(Age, 3) poso Age el AIC augmenta a 2140 pero el valor del GVIF baixa de 43 a 5 
-# si borro el Departure.Delay.in.Minutes el AIC augmenta a 2138 pero el valor del GIF de arrival.Delay.in.Minutes baixa de 18 a 1 
-
-# Add transformation with DelayedArrival 
-m9 <-  glm(satisfaction ~ poly(Age,3) + Customer.Type + Type.of.Travel*DelayedArrival + 
-     Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
-     Ease.of.Online.booking + Gate.location + Online.boarding + 
-     Seat.comfort*f.FlightDist + Inflight.entertainment + On.board.service + 
-     Leg.room.service*f.FlightDist + Baggage.handling + Checkin.service + Inflight.service + 
-     Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes+
-     AgeGroup, family = binomial, data = train)
-AIC(m8,m9) # m9 better -> AIC = 2128 
-
-# Add transformation with AgeGroup --> NO WORTH IT 
-m10 <-  glm(satisfaction ~ poly(Age,3) + Customer.Type + Type.of.Travel*DelayedArrival + 
-     Class + Inflight.wifi.service + Departure.Arrival.time.convenient + 
-     Ease.of.Online.booking*AgeGroup + Gate.location + Online.boarding*AgeGroup + 
-     Seat.comfort*f.FlightDist + Inflight.entertainment*AgeGroup + On.board.service + 
-     Leg.room.service*f.FlightDist + Baggage.handling + Checkin.service + Inflight.service + 
-     Cleanliness + Arrival.Delay.in.Minutes + Departure.Delay.in.Minutes, family = binomial, data = train)
-AIC(m9,m10) # m9 better -> 2128 
-par(mfrow=c(2,2))
-plot(m9) 
-plot(m4) # model with just numerical variables 
-summary(m9)
 ```
 
-Now after some preliminary model exploration, step-wise regression will be performed in order to find the best possible model according to Akaike's criterion.
+Now, we aim to develop the best numerical variable model, balancing both model fit and complexity. It is clear that the *Age* variable contributes meaningfully to the model. Upon inspecting the residuals plot, we observe that the residuals do not exhibit a flat pattern, suggesting that a transformation of the variable might improve the model. Squaring the variable resolves this issue effectively.
+
+On the other hand *Flight.Distance* also contributes meaningfully to the model. Incorporating the variable to the model it is clearly worth it, since we obtain better AIC and Residual deviance values and the residuals plot keeps showing a flat line. Transforming the variable is not worth, so we keep it plane.
+
+After incorporating these two variables, we evaluate the potential addition of *Departure.Delay.in.Minutes* and *Arrival.Delay.in.Minutes*.
+
+Following the AIC criteria, including *Departure.Delay.in.Minutes* to the existing model it is not worth it. Moreover,the Anova function (which provides insight into the net effect of adding variables to the model), shows that, at a 95% confidence level, including *Departure.Delay.in.Minutes* after *Arrival.Delay.in.Minutes* does not significantly improve the model.
+
+Therefore, the optimal numerical variable model includes the variables *Age*, *Flight.Distance*, and *Arrival.Delay.in.Minutes*. The residuals vs fitted plot shows a flat line.
+
+The model is :
+
+\[
+\begin{aligned}
+Y &= -0.9981 + (22.67) \text{poly}(\text{Age}, 2)_1 - (36.96) \text{poly}(\text{Age}, 2)_2 \\
+&\quad + (5.877e-04) \text{Flight.Distance} - (3.163e-03) \text{Arrival.Delay.in.Minutes}
+\end{aligned}
+\]
+
+The model’s fit statistics are as follows:
+
+- **AIC**: 6064.3
+- **Residual deviance**: 6054.3 (on 4995 degrees of freedom)
+
+Additionally, the Variance Inflation Factor (VIF) analysis confirms the absence of significant multicollinearity among the predictor variables.
+
+Residual and marginal model plots validate that all included variables are appropriate for the model.
+
+After finalizing the model, we examined the influence plot for any outliers or influential data points and removed them as necessary.
 
 ```{r}
 
-mAIC <- stepAIC(m7)
+#Numerical variables
+numeric_vars <- names(which(sapply(train, is.numeric)==TRUE));numeric_vars
+par(mfrow=c(2,2))
 
-mAIC
+############################
+#Including Age to the model#
+############################
+
+m1 <- glm(satisfaction ~ Age, family=binomial, data=train)
+summary(m1)
+Anova(m1, test= "LR")
+residualPlots( m1 ) # Residual vs fitted plot not showing a flat line.
+
+marginalModelPlots(m1)
+
+m1.2 <- glm(satisfaction ~ poly(Age,2), family=binomial, data=train)
+anova(m1, m1.2, test="Chisq")
+marginalModelPlots(m1.2)
+
+m1.3 <- glm(satisfaction ~ poly(Age,3), family=binomial, data=train)
+anova(m1, m1.3, test="Chisq")
+marginalModelPlots(m1.3)
+
+anova(m1.3, m1.2, test="Chisq")
+
+residualPlots( m1.2) 
+residualPlots( m1.3) # residual vs fitted plot not showing a flat line.
+AIC(m1, m1.2, m1.3)
+
+m1 <- m1.3
+
+########################################
+#Including Flight.Distance to the model#
+########################################
+
+m2 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance, family=binomial, 
+          data=train)
+summary(m2)
+Anova(m2,  test= "LR")
+anova(m1, m2, test="Chisq")
+residualPlots( m2, id.n=0 ) 
+marginalModelPlots(m2)
+
+m2.2 <- glm(satisfaction ~ poly(Age,2) + poly(Flight.Distance,2), 
+            family=binomial, data=train)
+summary(m2.2)
+Anova(m2.2, test= "LR")
+anova(m2, m2.2, test="Chisq")
+residualPlots( m2.2, id.n=0 ) 
+
+
+###################################################
+#Including Departure.Delay.in.Minutes to the model#
+###################################################
+
+m3 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Departure.Delay.in.Minutes, family=binomial, data=train)
+summary(m3)
+Anova(m3,  test= "LR")
+anova(m2, m3, test="Chisq")
+
+#################################################
+#Including Arrival.Delay.in.Minutes to the model#
+#################################################
+
+m4 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes, 
+          family=binomial, data=train)
+summary(m4)
+Anova(m4,  test= "LR")
+anova(m2, m4, test="Chisq")
+anova(m2, m4, test="Chisq")
+
+###################################################################
+#Removing Departure.Delay.in.Minutes of the model --> FINAL MODEL #
+###################################################################
+
+m5 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Arrival.Delay.in.Minutes, family=binomial, data=train)
+summary(m5)
+Anova(m5,  test= "LR")
+anova(m2, m5, test="Chisq")
+anova(m5, m4, test="Chisq")
+
+vif(m5)
+
+#############################
+#Asses final model residuals#
+############################
+par(mfrow=c(2,2))
+residualPlots( m5, id.n=0 )
+marginalModelPlots(m5)
+
+
+##############################################
+#  Check for influential data and delete it. #
+##############################################
+influencePlot(m5)
+infl <- Boxplot(cooks.distance(m5), id=list(labels=rownames(train)))
+llrem <- which(rownames(train) %in% infl);llrem
+train <- train[-llrem, ]
+
+m5 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Arrival.Delay.in.Minutes, family=binomial, data=train)
+
 ```
+
+## 3.2 Include factor main effects to the best numeric model & Residual Analysis
+
+Now that we have the best model only including numerical variables, we will include factor main effects to try to improve the model. We explain it step by step: 
+
+1- Adding the variable Gender is not statistically relevant, as shown by the AIC, Anova, and anova methods.
+
+2- Including Class, Customer.Type, and Type.of.Travel significantly improves the model. The Anova function indicates that the net effect of the numerical variable Flight.Distance is no longer relevant, so we remove it. Adding Inflight.wifi.service and Departure.Arrival.time.convenient further enhances the model.
+
+3- Although Ease.of.Online.booking slightly improves the AIC, its high VIF value suggests multicollinearity issues, so we exclude it.
+
+4- Adding Gate.location and Food.and.drink improves the model, but Departure.Arrival.time.convenient becomes statistically insignificant, leading to its removal. Adding Online.boarding renders Arrival.Delay.in.Minutes and Food.and.drink insignificant, so they are also removed.
+
+5- Including Seat.comfort, Inflight.entertainment, and On.board.service initially improves the model, but Inflight.entertainment has a high VIF and is excluded.
+
+6- Adding Leg.room.service, Baggage.handling, and Checkin.service reveals that Food.and.drink is no longer significant and is removed. Including Inflight.service and Cleanliness provides minimal improvement relative to added complexity, so they are excluded.
+
+7- Assessing self-defined factors, only DelayedArrival significantly contributes to the model; other factors are removed based on Anova tests and iterative analysis.
+
+8- A step() operation confirms all included variables are properly justified.
+
+The final model is:
+
+satisfaction ~ poly(Age, 2) + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service + Gate.location + Online.boarding + Seat.comfort + On.board.service + Leg.room.service + Baggage.handling + Checkin.service + DelayedArrival
+
+This model achieves an AIC value of 2235.28.
+
+While the AIC suggests this model outperforms the numerical-only version, the anova test indicates the improvement in fit is statistically significant, implying the increased complexity is worth it given the model benefits.
+
+Residual plots show outliers for the categorical variables, but this will be treated if they are influential in a bad way for the model.
+
+
+Finally, we assess influential data removing it from the model.
+
+```{r}
+
+factors <- names(which(sapply(train, is.numeric)==FALSE));factors
+
+###################
+# Include Gender  # not worth it
+###################
+
+m6 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Arrival.Delay.in.Minutes + Gender, family=binomial, data=train)
+summary(m6)
+anova(m5,m6, test="Chisq")
+Anova(m6,  test= "LR")
+
+###################
+# Include Class   #   
+###################
+m6 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Arrival.Delay.in.Minutes + Class, family=binomial, data=train)
+summary(m6)
+Anova(m6, test= "LR")
+anova(m5, m6, test="Chisq")
+
+##########################
+# Include Customer.Type  #  
+##########################
+m7 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Arrival.Delay.in.Minutes + Class + Customer.Type, 
+          family=binomial, data=train)
+summary(m7)
+Anova(m7,test= "LR")
+anova(m6, m7, test="Chisq")
+
+vif(m7)
+par( mfrow=c(2,2))
+plot( m7, id.n=0 )
+
+###########################
+# Include Type.of.Travel  # 
+###########################
+m8 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
+            Arrival.Delay.in.Minutes + Class + Customer.Type
+          + Type.of.Travel, family=binomial, data=train)
+summary(m8)
+Anova(m8,  test= "LR")
+anova(m7, m8, test="Chisq")
+vif(m8)
+
+###########################
+# Remove Flight.Distance  #
+###########################
+m9 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type
+          + Type.of.Travel, family=binomial, data=train)
+summary(m9)
+Anova(m9, test= "LR")
+anova(m9, m8, test="Chisq")
+vif(m9)
+
+
+#################################
+# Include Inflight.wifi.service #
+#################################
+m10 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service
+          , family=binomial, data=train)
+summary(m10)
+Anova(m10,  test= "LR")
+anova(m9, m10, test="Chisq")
+vif(m10)
+
+#############################################
+# Include Departure.Arrival.time.convenient #  
+#############################################
+
+m11 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service
+          + Departure.Arrival.time.convenient, family=binomial, data=train)
+summary(m11)
+Anova(m11,  test= "LR")
+vif(m11)
+
+##################################
+# Include Ease.of.Online.booking #  not worth it -> huge vif
+##################################
+
+m11 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service
+          + Departure.Arrival.time.convenient + Ease.of.Online.booking
+          , family=binomial, data=train)
+summary(m11)
+Anova(m11,  test= "LR")
+vif(m11)
+
+##################################
+# Include Gate.location          #
+##################################
+
+m11 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service +
+            Departure.Arrival.time.convenient + 
+            Gate.location ,
+          family=binomial, data=train)
+summary(m11)
+Anova(m11,  test= "LR")
+anova(m10, m11, test="Chisq")
+vif(m11)
+
+m11 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service +
+            + Gate.location ,
+          family=binomial, data=train)
+summary(m11)
+Anova(m11,  test= "LR")
+anova(m10, m11, test="Chisq")
+vif(m11)
+
+##################################
+# Include Food.and.drink         #
+##################################
+
+m12 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service + 
+            Gate.location + Food.and.drink, family=binomial, data=train)
+summary(m12)
+Anova(m12,  test= "LR")
+anova(m11, m12, test="Chisq")
+vif(m12)
+
+###################################################
+# Include Online.boarding , remove Food.and.drink #
+###################################################
+
+m13 <- glm(satisfaction ~ poly(Age,2) +  Arrival.Delay.in.Minutes 
+          + Class + Customer.Type + Type.of.Travel + Inflight.wifi.service + 
+            Gate.location + Food.and.drink + Online.boarding, family=binomial, 
+          data=train)
+Anova(m13,  test= "LR")
+
+m13 <- glm(satisfaction ~ poly(Age,2) +Arrival.Delay.in.Minutes + Class + 
+             Customer.Type + Type.of.Travel 
+           + Inflight.wifi.service + Gate.location +  Online.boarding, 
+           family=binomial, data=train)
+summary(m13)
+Anova(m13,  test= "LR")
+
+vif(m13)
+
+###############################################################################
+# Include "Seat.comfort", "Inflight.entertainment", "On.board.service"#
+###############################################################################
+
+m14 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
+          Type.of.Travel + + Arrival.Delay.in.Minutes +Inflight.wifi.service +
+            Gate.location + 
+           + Inflight.entertainment +Online.boarding + Seat.comfort + 
+            On.board.service ,family=binomial, 
+          data=train)
+summary(m14)
+Anova(m14,  test= "LR")
+anova(m13, m14, test="Chisq")
+vif(m14) # Inflight entertainment huge VIF, remove it
+
+m14 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
+          Type.of.Travel + + Arrival.Delay.in.Minutes +Inflight.wifi.service +
+            Gate.location  +Online.boarding + Seat.comfort + 
+            On.board.service ,family=binomial, 
+          data=train)
+summary(m14)
+Anova(m14,  test= "LR")
+anova(m13, m14, test="Chisq")
+vif(m14) 
+
+
+##################################################################
+# Include "Leg.room.service","Baggage.handling","Checkin.service"#
+##################################################################
+
+m15 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
+          Type.of.Travel + + Arrival.Delay.in.Minutes +Inflight.wifi.service +
+            Gate.location  +Online.boarding + Seat.comfort + 
+            On.board.service + + Leg.room.service + Baggage.handling + 
+            Checkin.service,family=binomial, 
+          data=train)
+
+summary(m15)
+Anova(m15,  test= "LR")
+anova(m14, m15, test="Chisq")
+vif(m15)
+
+###########################################
+# Include "Inflight.service","Cleanliness"# 
+###########################################
+
+m16 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
+          Type.of.Travel + + Arrival.Delay.in.Minutes +Inflight.wifi.service +
+            Gate.location  +Online.boarding + Seat.comfort + 
+            On.board.service + + Leg.room.service + Baggage.handling + 
+            Checkin.service + Inflight.service +  Cleanliness ,family=binomial, 
+          data=train)
+
+summary(m16)
+Anova(m16,  test= "LR")
+anova(m15, m16, test="Chisq")
+vif(m16)
+
+########################################################################
+# Include "AgeGroup","f.FlightDist", "DelayedArrival""DelayedDeparture"# 
+########################################################################
+
+m16 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
+          Type.of.Travel + + Arrival.Delay.in.Minutes +Inflight.wifi.service +
+            Gate.location  +Online.boarding + Seat.comfort + 
+            On.board.service + + Leg.room.service + Baggage.handling + 
+            Checkin.service + Inflight.service +  Cleanliness + AgeGroup +
+      f.FlightDist + DelayedArrival +
+            DelayedDeparture,family=binomial, 
+          data=train)
+
+summary(m16)
+Anova(m16,  test= "LR") # remove agegroup, f.FlightDist + DelayedArrival
+anova(m15, m16, test="Chisq")
+vif(m16)
+
+#delete Arrival delay in minutes
+
+m16 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
+          Type.of.Travel + Inflight.wifi.service +
+            Gate.location  +Online.boarding + Seat.comfort + 
+            On.board.service + + Leg.room.service + Baggage.handling + 
+            Checkin.service + Inflight.service +  Cleanliness + DelayedArrival 
+          ,family=binomial, 
+          data=train)
+summary(m16)
+Anova(m16,  test= "LR") # remove age group
+anova(m15, m16, test="Chisq")
+
+vif(m16)
+
+#############################
+#Asses final model residuals#
+############################
+residualPlots( m16, id.n=0 )
+marginalModelPlots(m16)
+
+
+###############
+# FINAL CHECK #
+###############
+m17 <- step(m16)
+
+
+##############################################
+#  Check for influential data and delete it. #
+##############################################
+influencePlot(m16)
+infl <- Boxplot(cooks.distance(m16), id=list(labels=rownames(train)))
+llrem <- which(rownames(train) %in% infl);llrem
+train <- train[-llrem, ]
+
+m16 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
+          Type.of.Travel + Inflight.wifi.service +
+            Gate.location  +Online.boarding + Seat.comfort + 
+            On.board.service + + Leg.room.service + Baggage.handling + 
+            Checkin.service + Inflight.service +  Cleanliness + DelayedArrival 
+          ,family=binomial, 
+          data=train)
+
+```
+
+
+## 3.3 Include factor main effects and interactions to the best numeric model & Residual Analysis
+
+In this section, we add interactions to the model to see if we can improve it.
+
+We first add interactions between all categorical values and the numerical variable. Then, using the step function, we go through a first cleaning of interaction in order to reduce the dimensionality and complexity of the model, obtaining model 19.By performing an anova test, we cannot reject the null hypothesis under a 99% confidence, and thus both models are equivalent, which makes us clearly keep the simplest one. 
+
+After removing those variables introducing multicollinearity, we obtain the final model. Residual and marginal model plots show a good model.
+
+```{r}
+
+############################################
+#  INCLUDE INTERACTIONS WITH ALL VARIABLES #
+############################################
+
+m18 <- glm(satisfaction ~ poly(Age,2) *( Class + Customer.Type + 
+          Type.of.Travel + Inflight.wifi.service +
+            Gate.location  +Online.boarding + Seat.comfort + 
+            On.board.service + + Leg.room.service + Baggage.handling + 
+            Checkin.service + Inflight.service +  Cleanliness + DelayedArrival)
+          ,family=binomial, 
+          data=train)
+
+summary(m18)
+Anova(m18,  test= "LR") 
+
+##################################################
+# Remove not significant interactions using step #
+##################################################
+
+m19 <- step(m18)
+
+m19 <- glm(satisfaction ~poly(Age,2)*(Customer.Type + Online.boarding + 
+              Leg.room.service + Inflight.service+  Cleanliness) + Class + 
+             Customer.Type + Type.of.Travel + Inflight.wifi.service + 
+             Gate.location + Online.boarding + Seat.comfort + On.board.service+ 
+             Leg.room.service + Baggage.handling + Checkin.service + 
+             Inflight.service + Cleanliness + DelayedArrival  , 
+           family=binomial, data=train)
+summary(m19)
+anova(m19, m18, test="Chisq")
+
+#############################
+# Remove too big vif values #
+#############################
+vif(m19)
+m20 <- glm(satisfaction ~poly(Age,2)*(Leg.room.service +  Cleanliness) + Class + 
+             Customer.Type + Type.of.Travel + Inflight.wifi.service + 
+             Gate.location + Online.boarding + Seat.comfort + On.board.service+ 
+             Leg.room.service + Baggage.handling + Checkin.service + 
+             Inflight.service + Cleanliness + DelayedArrival  , 
+           family=binomial, data=train)
+vif(m20)
+summary(m20)
+
+##############################################
+#  Check for influential data and delete it. #
+##############################################
+# Set the maximum number of iterations
+max_iterations <- 10
+
+for (i in 1:max_iterations) {
+  # Generate the influence plot
+  influencePlot(m20)
+  
+  # Identify influential data points
+  infl <- Boxplot(cooks.distance(m20), id = list(labels = rownames(train)))
+  llrem <- which(rownames(train) %in% infl)
+  
+  # Break the loop if no influential data points are found
+  if (length(llrem) == 0) {
+    message("No more influential points to remove. Stopping iterations.")
+    break
+  }
+  
+  # Remove the identified data points
+  train <- train[-llrem, ]
+  
+    # Refit the model with the updated data
+  m20 <- glm(satisfaction ~ poly(Age, 2) + Class + Customer.Type + 
+               Type.of.Travel + Inflight.wifi.service + Gate.location + 
+               Online.boarding + Seat.comfort + On.board.service + 
+               Leg.room.service + Baggage.handling + Checkin.service + 
+               Inflight.service + Cleanliness + DelayedArrival, 
+             family = binomial, data = train)
+  
+  message("Iteration ", i, " completed. Model refitted.")
+}
+
+```
+
+Now, we proceed to remove unusual and influent data. In order to do it, we limit to 10 times the iterative process of removing the more influent data, which has high hat values and its residuals are greater than the thresholds.
+
+```{r}
+#############################
+#Asses final model residuals#
+#############################
+
+residualPlots( m20, id.n=0 )
+marginalModelPlots(m20)
+
+```
+
 
 ## 3.2 Effects study
 
 ```{r}
-plot(allEffects(m7))
-```
-
-## 3.3 Residual analysis and Influential data study
-
-```{r}
-# Use for glms 
-residualPlots(m7)
-influencePlot(m2, id.n=5)
-
-# 913, 951 can be considered influent data (However, this doesn't equal to being outlier or noise... no need to remove values with large hat values)
-Boxplot(cooks.distance(m7), id=list(labels=rownames(dfwork)))
+plot(allEffects(m20))
 ```
 
 ## 3.4 Final model interpretation
 
-The final model that obtained after a long model discovery is the following, which has a pseudo-coefficient of determination (McFadden) of X.
+The final model that obtained after a long model discovery is the following, which has a pseudo-coefficient of determination (McFadden) of 0.80.
 
-TODO: Explicar amb una formula de latex la interpretacio del model final amb logit i probabilitats i tal
 
 ```{r}
-best_model <- m1
 
 #Summary of the parameters
-summary(best_model)
+summary(m20)
 #Psuedo coefficient of determination R^2
-psuedoR2 <- pR2(best_model)["McFadden"]
+pseudoR2 <- pR2(m20)["McFadden"];
+pseudoR2
 #Residual analysis and influent data
-residualPlots(best_model)
+residualPlots(m20)
 
+
+```
+
+Now, we evaluate the model in the train data using the confusion matrix and AUC.
+
+The model predicts 2878 non satisfied clients and 2002 satisfied clients.
+
+From the confusion matrix, we know that it missclassifies 113 individuals which are satisfied to neutral or dissatisfaction, and 151 individuals which are neutral or dissatisfaction as satisfied.
+
+The model obtains a 95% of accuracy, 94% precision, 92% recall and 93% F1 score in the training set.
+
+The AUC value is 0.988182.
+
+```{r}
 #Evaluation of the model using train data (Confusion matrix and AUC)
 
 # Get predicted probabilities and classifications
-predicted_prob <- predict(best_model, newdata = train, type = "response") 
+predicted_prob <- predict(m20, newdata = train, type = "response")
+summary(predicted_prob)
 #Classification threshold
-threshold <- 0.5  
-predicted_class <- ifelse(predicted_prob > threshold, 1, 0) 
-
+predicted_class <- ifelse(predicted_prob > 0.5, 1, 0)
+table(predicted_class)
 # Confusion Matrix
-actual_class <- train$satisfaction  
-conf_matrix <- confusionMatrix(as.factor(predicted_class), as.factor(actual_class));conf_matrix
+actual_class <- train$satisfaction
+table(actual_class)
+conf_matrix <- confusionMatrix((predicted_class), (actual_class));conf_matrix
 
-# Extract evaluation metrics
-accuracy <- conf_matrix$overall["Accuracy"]
-precision <- conf_matrix$byClass["Precision"]
-recall <- conf_matrix$byClass["Recall"]
+
+# Confusion matrix components
+TN <- 2727
+FP <- 113
+FN <- 151
+TP <- 1889
+
+# Calculations
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
 f1_score <- 2 * (precision * recall) / (precision + recall)
 
+# Print results
 cat("Accuracy:", accuracy, "\n")
 cat("Precision:", precision, "\n")
 cat("Recall:", recall, "\n")
 cat("F1 Score:", f1_score, "\n")
 
 # AUC and ROC Curve
-roc_curve <- roc(actual_class, predicted_prob)  
-auc_value <- auc(roc_curve)  
+roc_curve <- roc(actual_class, predicted_prob)
+auc_value <- auc(roc_curve)
 cat("AUC:", auc_value, "\n")
 
 # Plot the ROC Curve
@@ -915,11 +1464,63 @@ abline(a = 0, b = 1, lty = 2, col = "red")  # Add diagonal reference line
 
 Evaluation of the aforementioned model with unseen data will be performed using various categorical data criteria such as Precision, Recall, Accuracy, F1-score and the AUC/ROC curve.
 
+First, from the confusion matrix we see that the model miss classifies 151 out of 2000 observations, which corresponds to a relatively low error rate (7.55%). These are 47 satisfied clients which are set to neutral or dissatisfied, and 104 which are neutral or dissatisfied and are classified as satisfied.
+
+In the test set, the model obtains: 
+
+- Accuracy: 0.9245 
+- Precision: 0.9458525 
+- Recall: 0.8875676 
+- F1 Score: 0.9157836 
+- AUC: 0.9644088 
 
 ```{r}
+#Evaluation of the model using train data (Confusion matrix and AUC)
+# Get predicted probabilities and classifications
+predicted_prob <- predict(m20, newdata = test, type = "response")
+summary(predicted_prob)
+#Classification threshold
+predicted_class <- ifelse(predicted_prob > 0.5, 1, 0)
+table(predicted_class)
 
+# Confusion Matrix
+actual_class <- test$satisfaction
+table(actual_class)
+conf_matrix <- confusionMatrix((predicted_class), (actual_class));conf_matrix
+
+
+# Confusion matrix components
+TN <- 1028
+FP <- 47
+FN <- 104
+TP <- 821
+
+# Calculations
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+# Print results
+cat("Accuracy:", accuracy, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall:", recall, "\n")
+cat("F1 Score:", f1_score, "\n")
+
+# AUC and ROC Curve
+roc_curve <- roc(actual_class, predicted_prob)
+auc_value <- auc(roc_curve)
+cat("AUC:", auc_value, "\n")
+
+# Plot the ROC Curve
+plot(roc_curve, col = "blue", main = "ROC Curve", lwd = 2)
+abline(a = 0, b = 1, lty = 2, col = "red")  # Add diagonal reference line
+
+# Hosmer-Lemeshow Goodness of Fit (GOF) Test 
+library(ResourceSelection)
+?hoslem.test
+# hoslem.test(y = test$satisfaction, x = predicted_prob, g = 10)
 ```
-
 
 
 ## 4 Conclusion and Further Work
