@@ -827,7 +827,6 @@ summary(as.factor(train$satisfaction))
 summary(as.factor(test$satisfaction))
 
 
-
 #Null model
 m0 <- glm(satisfaction ~ 1, family=binomial, data=train)
 summary(m0)
@@ -896,7 +895,7 @@ residualPlots( m1.2)
 residualPlots( m1.3) # residual vs fitted plot not showing a flat line.
 AIC(m1, m1.2, m1.3)
 
-m1 <- m1.3
+m1 <- m1.2
 
 ########################################
 #Including Flight.Distance to the model#
@@ -938,7 +937,7 @@ m4 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance +
 summary(m4)
 Anova(m4,  test= "LR")
 anova(m2, m4, test="Chisq")
-anova(m2, m4, test="Chisq")
+
 
 ###################################################################
 #Removing Departure.Delay.in.Minutes of the model --> FINAL MODEL #
@@ -1042,7 +1041,8 @@ anova(m6, m7, test="Chisq")
 
 vif(m7)
 par( mfrow=c(2,2))
-plot( m7, id.n=0 )
+residualPlot(m7, id.n=0)
+
 
 ###########################
 # Include Type.of.Travel  # 
@@ -1227,7 +1227,7 @@ m16 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type +
           data=train)
 
 summary(m16)
-Anova(m16,  test= "LR") # remove agegroup, f.FlightDist + DelayedArrival
+Anova(m16,  test= "LR") # remove agegroup, f.FlightDist +  DelayedDeparture
 anova(m15, m16, test="Chisq")
 vif(m16)
 
@@ -1241,7 +1241,7 @@ m16 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type +
           ,family=binomial, 
           data=train)
 summary(m16)
-Anova(m16,  test= "LR") # remove age group
+Anova(m16,  test= "LR")
 anova(m15, m16, test="Chisq")
 
 vif(m16)
@@ -1263,6 +1263,7 @@ m17 <- step(m16)
 #  Check for influential data and delete it. #
 ##############################################
 influencePlot(m16)
+
 infl <- Boxplot(cooks.distance(m16), id=list(labels=rownames(train)))
 llrem <- which(rownames(train) %in% infl);llrem
 train <- train[-llrem, ]
@@ -1310,7 +1311,7 @@ Anova(m18,  test= "LR")
 m19 <- step(m18)
 
 m19 <- glm(satisfaction ~poly(Age,2)*(Customer.Type + Online.boarding + 
-              Leg.room.service + Inflight.service+  Cleanliness) + Class + 
+              Leg.room.service + Checkin.service +  Cleanliness) + Class + 
              Customer.Type + Type.of.Travel + Inflight.wifi.service + 
              Gate.location + Online.boarding + Seat.comfort + On.board.service+ 
              Leg.room.service + Baggage.handling + Checkin.service + 
@@ -1323,15 +1324,19 @@ anova(m19, m18, test="Chisq")
 # Remove too big vif values #
 #############################
 vif(m19)
-m20 <- glm(satisfaction ~poly(Age,2)*(Leg.room.service +  Cleanliness) + Class + 
-             Customer.Type + Type.of.Travel + Inflight.wifi.service + 
+m20 <- glm(satisfaction ~poly(Age,2)*(Leg.room.service + Checkin.service + Cleanliness) +
+             Class + Customer.Type + Type.of.Travel + Inflight.wifi.service + 
              Gate.location + Online.boarding + Seat.comfort + On.board.service+ 
-             Leg.room.service + Baggage.handling + Checkin.service + 
+             Leg.room.service + Baggage.handling + 
              Inflight.service + Cleanliness + DelayedArrival  , 
            family=binomial, data=train)
 vif(m20)
 summary(m20)
+```
 
+Now, we proceed to remove unusual and influent data. In order to do it, we limit to 10 times the iterative process of removing the more influent data, which has high hat values and its residuals are greater than the thresholds.
+
+```{r}
 ##############################################
 #  Check for influential data and delete it. #
 ##############################################
@@ -1366,11 +1371,7 @@ for (i in 1:max_iterations) {
   message("Iteration ", i, " completed. Model refitted.")
 }
 
-```
 
-Now, we proceed to remove unusual and influent data. In order to do it, we limit to 10 times the iterative process of removing the more influent data, which has high hat values and its residuals are greater than the thresholds.
-
-```{r}
 #############################
 #Asses final model residuals#
 #############################
@@ -1409,11 +1410,11 @@ Now, we evaluate the model in the train data using the confusion matrix and AUC.
 
 The model predicts 2878 non satisfied clients and 2002 satisfied clients.
 
-From the confusion matrix, we know that it missclassifies 113 individuals which are satisfied to neutral or dissatisfaction, and 151 individuals which are neutral or dissatisfaction as satisfied.
+From the confusion matrix, we know that it missclassifies 114 individuals which are satisfied to neutral or dissatisfaction, and 154 individuals which are neutral or dissatisfaction as satisfied.
 
 The model obtains a 95% of accuracy, 94% precision, 92% recall and 93% F1 score in the training set.
 
-The AUC value is 0.988182.
+The AUC value is 0.9879737.
 
 ```{r}
 #Evaluation of the model using train data (Confusion matrix and AUC)
@@ -1431,10 +1432,10 @@ conf_matrix <- confusionMatrix((predicted_class), (actual_class));conf_matrix
 
 
 # Confusion matrix components
-TN <- 2727
-FP <- 113
-FN <- 151
-TP <- 1889
+TN <- 2725
+FP <- 114
+FN <- 154
+TP <- 1887
 
 # Calculations
 accuracy <- (TP + TN) / (TP + TN + FP + FN)
@@ -1464,15 +1465,15 @@ abline(a = 0, b = 1, lty = 2, col = "red")  # Add diagonal reference line
 
 Evaluation of the aforementioned model with unseen data will be performed using various categorical data criteria such as Precision, Recall, Accuracy, F1-score and the AUC/ROC curve.
 
-First, from the confusion matrix we see that the model miss classifies 151 out of 2000 observations, which corresponds to a relatively low error rate (7.55%). These are 47 satisfied clients which are set to neutral or dissatisfied, and 104 which are neutral or dissatisfied and are classified as satisfied.
+First, from the confusion matrix we see that the model miss classifies 151 out of 2000 observations, which corresponds to a relatively low error rate (7.55%). These are 48 satisfied clients which are set to neutral or dissatisfied, and 103 which are neutral or dissatisfied and are classified as satisfied.
 
 In the test set, the model obtains: 
 
 - Accuracy: 0.9245 
-- Precision: 0.9458525 
-- Recall: 0.8875676 
-- F1 Score: 0.9157836 
-- AUC: 0.9644088 
+- Precision: 0.94482
+- Recall: 0.8886
+- F1 Score: 0.9158
+- AUC: 0.9644
 
 ```{r}
 #Evaluation of the model using train data (Confusion matrix and AUC)
@@ -1491,9 +1492,9 @@ conf_matrix <- confusionMatrix((predicted_class), (actual_class));conf_matrix
 
 # Confusion matrix components
 TN <- 1028
-FP <- 47
-FN <- 104
-TP <- 821
+FP <- 48
+FN <- 103
+TP <- 822
 
 # Calculations
 accuracy <- (TP + TN) / (TP + TN + FP + FN)
@@ -1519,7 +1520,8 @@ abline(a = 0, b = 1, lty = 2, col = "red")  # Add diagonal reference line
 # Hosmer-Lemeshow Goodness of Fit (GOF) Test 
 library(ResourceSelection)
 ?hoslem.test
-# hoslem.test(y = test$satisfaction, x = predicted_prob, g = 10)
+# hoslem.test(y = test$satisfaction, x = predicted_prob, g = 2)
+
 ```
 
 
