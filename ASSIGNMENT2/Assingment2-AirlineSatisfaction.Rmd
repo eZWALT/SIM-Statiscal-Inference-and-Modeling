@@ -866,7 +866,7 @@ Additionally, the Variance Inflation Factor (VIF) analysis confirms the absence 
 
 Residual and marginal model plots validate that all included variables are appropriate for the model.
 
-After finalizing the model, we examined the influence plot for any outliers or influential data points and removed them as necessary.
+After finalizing the model, we assessed influence in the glm models. By removing the severe outliers in the cooks distance metric, we remove the most influential points in the model. In the final model, we might repeat the process iteratively to remove all influential points.
 
 ```{r}
 
@@ -968,12 +968,21 @@ marginalModelPlots(m5)
 #  Check for influential data and delete it. #
 ##############################################
 influencePlot(m5)
-infl <- Boxplot(cooks.distance(m5), id=list(labels=rownames(train)))
-llrem <- which(rownames(train) %in% infl);llrem
-train <- train[-llrem, ]
+Boxplot(cooks.distance(m5), id=list(labels=rownames(train)))
 
+
+cd <- cooks.distance(m5)
+ss <- summary(cd); ss
+IQR <- ss[5] - ss[2]
+severelowethresh<- ss[3] - 3*IQR;
+severeuperthresh<-ss[5] + 3*IQR;
+llrem <- which((cd < severelowethresh) | (cd > severeuperthresh));length(llrem)
+train <- train[-llrem,]
+
+#retrain the model
 m5 <- glm(satisfaction ~ poly(Age,2) + Flight.Distance + 
             Arrival.Delay.in.Minutes, family=binomial, data=train)
+
 
 ```
 
@@ -1267,10 +1276,16 @@ m17 <- step(m16)
 #  Check for influential data and delete it. #
 ##############################################
 influencePlot(m16)
+Boxplot(cooks.distance(m5), id=list(labels=rownames(train)))
 
-infl <- Boxplot(cooks.distance(m16), id=list(labels=rownames(train)))
-llrem <- which(rownames(train) %in% infl);llrem
-train <- train[-llrem, ]
+
+cd <- cooks.distance(m5)
+ss <- summary(cd); ss
+IQR <- ss[5] - ss[2]
+severelowethresh<- ss[3] - 3*IQR;
+severeuperthresh<-ss[5] + 3*IQR;
+llrem <- which((cd < severelowethresh) | (cd > severeuperthresh));length(llrem)
+train <- train[-llrem,]
 
 m16 <- glm(satisfaction ~ poly(Age,2) + Class + Customer.Type + 
           Type.of.Travel + Inflight.wifi.service +
@@ -1338,22 +1353,28 @@ vif(m20)
 summary(m20)
 ```
 
-Now, we proceed to remove unusual and influent data. In order to do it, we limit to 10 times the iterative process of removing the more influent data, which has high hat values and its residuals are greater than the thresholds.
+Now, we proceed to remove unusual and influent data. In order to do it, we remove the cook's distance outliers iteratively until we iterate a certain number of times. This way, we remove those points which bias our model incorrectly. 
 
 ```{r}
+
+
 ##############################################
 #  Check for influential data and delete it. #
 ##############################################
 # Set the maximum number of iterations
-max_iterations <- 10
+max_iterations <- 3
 
 for (i in 1:max_iterations) {
   # Generate the influence plot
   influencePlot(m20)
-  
+
   # Identify influential data points
-  infl <- Boxplot(cooks.distance(m20), id = list(labels = rownames(train)))
-  llrem <- which(rownames(train) %in% infl)
+  cd <- cooks.distance(m20)
+  ss <- summary(cd); ss
+  IQR <- ss[5] - ss[2]
+  severelowethresh<- ss[3] - 3*IQR;
+  severeuperthresh<-ss[5] + 3*IQR;
+  llrem <- which((cd < severelowethresh) | (cd > severeuperthresh));length(llrem)
   
   # Break the loop if no influential data points are found
   if (length(llrem) == 0) {
@@ -1524,7 +1545,7 @@ abline(a = 0, b = 1, lty = 2, col = "red")  # Add diagonal reference line
 # Hosmer-Lemeshow Goodness of Fit (GOF) Test 
 library(ResourceSelection)
 ?hoslem.test
-# hoslem.test(y = test$satisfaction, x = predicted_prob, g = 2)
+#hoslem.test(y = test$satisfaction, x = predicted_prob, g = 2)
 
 ```
 
