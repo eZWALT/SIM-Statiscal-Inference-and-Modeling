@@ -1381,13 +1381,13 @@ marginalModelPlots(m20)
 ```
 
 
-## 3.2 Effects study
+## 3.4 Effects study
 
 ```{r}
 plot(allEffects(m20))
 ```
 
-## 3.4 Final model interpretation
+## 3.5 Final model interpretation
 
 The final model that obtained after a long model discovery is the following, which has a pseudo-coefficient of determination (McFadden) of 0.80.
 
@@ -1525,9 +1525,21 @@ library(ResourceSelection)
 
 ## 4 Conclusion and Further Work
 
-TODO: Falten totes les conclusions :)
+In conclusion, several insights can be extracted after the completion of this work:
+
+**Exploratory Data Analysis**: Exploratory data analysis is fundamental to any data-driven project. It has allowed us to understand the structure and hidden patterns in data such as the most influential factors affecting the target variable customer satisfaction, such as customer type, travel class, delay status...
+
+**Model interpretability**: Iterative residual and influence analysis has ensured a robust model almost free from influential outliers and mutlicollinearity issues. The addition of factors and some interactions between variables has been proved to greatly improve the model goodness of fit and predictive performance. Lastly, it is apparent that the final model is also rich in simplicty and explainability due to the lack of over complicated polynomials and expressions, only the raw variables and some interactions between age and factors are used for the model (Cleanliness, Customer Type, Online.Onboarding, Leg room, Inflight service).
+
+**Data Preparation**: The dataset opposed some challenges during the data prepration/cleaning phase given the number of outliers and missing values in some variables. However, after performing the data quality report and imputation it can clearly be concluded that the latent quality of this data is astonishingly high, and that is the main rationale behind the performance of our final model.
 
 
-**Extensissimo prolongado relato**
+**Model Performance**: Firstly, its clear that the goodness of fit for the train data is great given the low residual deviance, AIC and high McFadden Pseudo $R^2$. Not only that but also the quality of the predictive performance on unseen data is astonishingly good, after empirically measuring Recall, Precision, Accuracy, F1-score and AUC of at least 88%. This points out the fact that high quality data produces high quality models, therefore validating the garbage-in garbage-out old saying.
 
+This project still has some potential areas of improvement such as:
 
+1. **Advanced feature engineering**: Exploring additional derived variables such as time-related features or complex interactions driven by business knowledge. 
+
+2. **Data Integration**: Incorporating external data such as weather, ticket pricing, flight routes... for a more in-depth and holistic analysis and increased predictive power.
+
+3. **Advanced Modelling**: Trying unsupervised clustering methods or advanced classification models like neural networks or decision trees could enhance predictive abilities, analysis depth or improve interpretability in the case of the latter.
