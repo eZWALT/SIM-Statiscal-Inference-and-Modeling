@@ -37,8 +37,12 @@ In the modeling phase, we utilize the training dataset to build and refine predi
 ```{r include=FALSE}
 
 #set eval to TRUE to produce the knit of the ANEX in pdf format.
-knitr::opts_chunk$set(eval = FALSE, echo = TRUE) 
-
+#knitr::opts_chunk$set(eval = FALSE, echo = TRUE) 
+knitr::opts_chunk$set(
+  eval = TRUE,
+  fig.align='center', 
+  out.width='50%'
+)
 set.seed(123)
 # Libraries, cleanup and global variables
 library(car)
@@ -770,7 +774,7 @@ test <- df_complete_test
 
 The target binary variable **satisfaction** splits the data unevenly: 57.14% neutral or dissastified vs 42.86% satisfied. Moreover this variable contains no null values at all. To delve deeper into the main differences between these 2 groups, a clustering profiling will be performed. Just as a remainder, the dataset contains 18 categorical variables (14 ordinal, 3 binary, 1 ternary) and 4 numerical, besides the target variable.
 
-Firstly, the **test.chi2** output points out the fact that almost all categorical variables are statistically significantly related to satisfaction, except for **Gender**. The statistical significance of the performed $$\chi^2$$ tests is huge for all variables except for **Departure.Arrival.time.convenient**, which has the lowest p-value of them all, $$1.53 \cdot 10^{-2}$$.
+Firstly, the **test.chi2** output points out the fact that almost all categorical variables are statistically significantly related to satisfaction, except for **Gender**. The statistical significance of the performed $\chi^2$ tests is huge for all variables except for **Departure.Arrival.time.convenient**, which has the lowest p-value of them all, $1.53 \cdot 10^{-2}$.
 
 Secondly, the **quanti.var** output points out that all the numerical variables of the dataset (Flight.Distance, Age, Arrival.Delay.in.Minutes and Departure.Delay.in.Minutes) are statistically significant after performing Anova/T-test, being Flight.Distance and Age the most significant variables.
 
